@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.jfoenix.controls.JFXToggleButton?>
+<?import javafx.collections.FXCollections?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.paint.*?>
+<?import javafx.scene.text.*?>
+<?import java.lang.*?>
+<AnchorPane xmlns:fx="http://javafx.com/fxml/1" style="-fx-background-color: transparent;"
+            xmlns="http://javafx.com/javafx/21" fx:controller="com.example.valnarratorgui.ValNarratorController">
+    <AnchorPane fx:id="topBar" prefHeight="55.0" prefWidth="356.0" style="-fx-background-color: #1C2C3C;">
+        <ImageView fx:id="btnUser" fitHeight="25.0" fitWidth="34.0" layoutX="130.0" layoutY="19.0"
+                   onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">
+            <Image url="@user.png"/>
+        </ImageView>
+        <ImageView fx:id="btnInfo" fitHeight="25.0" fitWidth="34.0" layoutX="209.0" layoutY="19.0"
+                   onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">
+            <Image url="@info.png"/>
+        </ImageView>
+        <ImageView fx:id="btnPower" fitHeight="25.0" fitWidth="34.0" layoutX="57.0" layoutY="19.0"
+                   onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">
+            <Image url="@power.png"/>
+        </ImageView>
+        <ImageView fx:id="btnSettings" fitHeight="25.0" fitWidth="31.0" layoutX="279.0" layoutY="19.0"
+                   onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">
+            <Image url="@setting.png"/>
+        </ImageView>
+    </AnchorPane>
+    <AnchorPane fx:id="panelUser" layoutY="73.0" prefHeight="355.0" prefWidth="356.0"
+                style="-fx-background-color: transparent;" visible="false">
+        <ImageView fitHeight="357.0" fitWidth="356.0" layoutY="-2.0" pickOnBounds="true">
+            <image>
+                <Image url="@appBackgroundBLUR.png"/>
+            </image>
+        </ImageView>
+        <Label layoutX="25.0" layoutY="58.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR VOICE" textFill="WHITE">
+            <font>
+                <Font name="System Bold" size="12.0"/>
+            </font>
+        </Label>
+        <ComboBox id="voices" fx:id="voices" layoutX="177.0" layoutY="74.0" onAction="#selectVoice"
+                  onHidden="#hideVoices" onShown="#showVoices" prefHeight="25.0" prefWidth="125.0"
+                  promptText="Matthew, male"
+                  style="-fx-border-color: white; -fx-background-radius: 5em; -fx-border-radius: 5em;"
+                  stylesheets="@comboBoxStyle.css">
+            <items>
+                <FXCollections fx:factory="observableArrayList">
+                    <String fx:value="Matthew, male"/>
+                    <String fx:value="Justin, male"/>
+                    <String fx:value="Joey, male"/>
+                    <String fx:value="Brian, male"/>
+                    <String fx:value="Joanna, female"/>
+                    <String fx:value="Ivy, female"/>
+                    <String fx:value="Kendra, female"/>
+                    <String fx:value="Kajal, female"/>
+                    <String fx:value="Astra, VALORANT"/>
+                    <String fx:value="Breach, VALORANT"/>
+                    <String fx:value="Brimstone, VALORANT"/>
+                    <String fx:value="Chamber, VALORANT"/>
+                    <String fx:value="Cypher, VALORANT"/>
+                    <String fx:value="Deadlock, VALORANT"/>
+                    <String fx:value="Fade, VALORANT"/>
+                    <String fx:value="Gekko, VALORANT"/>
+                    <String fx:value="Harbor, VALORANT"/>
+                    <String fx:value="Jett, VALORANT"/>
+                    <String fx:value="KAYO, VALORANT"/>
+                    <String fx:value="Killjoy, VALORANT"/>
+                    <String fx:value="Neon, VALORANT"/>
+                    <String fx:value="Omen, VALORANT"/>
+                    <String fx:value="Phoenix, VALORANT"/>
+                    <String fx:value="Raze, VALORANT"/>
+                    <String fx:value="Reyna, VALORANT"/>
+                    <String fx:value="Sage, VALORANT"/>
+                    <String fx:value="Skye, VALORANT"/>
+                    <String fx:value="Sova, VALORANT"/>
+                    <String fx:value="Viper, VALORANT"/>
+                    <String fx:value="Yoru, VALORANT"/>
+                </FXCollections>
+            </items>
+        </ComboBox>
+        <Label layoutX="25.0" layoutY="83.0" prefHeight="34.0" prefWidth="107.0"
+               text="Change speaker voice for text narration." textFill="#f2efef" wrapText="true">
+            <font>
+                <Font size="9.0"/>
+            </font>
+        </Label>
+
+        <Label layoutX="20.0" layoutY="270.0" prefHeight="25.0" prefWidth="117.0" text="REMAINING QUOTA"
+               textFill="WHITE">
+            <font>
+                <Font name="System Bold" size="12.0"/>
+            </font>
+        </Label>
+        <Label layoutX="20.0" layoutY="296.0" prefHeight="28.0" prefWidth="101.0"
+               text="Remaining messages for today's quota." textFill="#f2efef" wrapText="true">
+            <font>
+                <Font size="9.0"/>
+            </font>
+        </Label>
+        <Separator layoutX="24.0" layoutY="120.0" prefHeight="19.0" prefWidth="289.0"/>
+        <Separator layoutX="24.0" layoutY="251.0" prefHeight="19.0" prefWidth="289.0"/>
+        <ProgressBar fx:id="quotaBar" layoutX="176.0" layoutY="286.0" prefHeight="19.0" prefWidth="125.0" progress="1.0"
+                     style="-fx-background-radius: 5em; -fx-border-radius: 5em;"/>
+        <Label layoutX="25.0" layoutY="151.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR STATS"
+               textFill="WHITE">
+            <font>
+                <Font name="System Bold" size="12.0"/>
+            </font>
+        </Label>
+        <Label layoutX="25.0" layoutY="177.0" prefHeight="34.0" prefWidth="107.0" text="Messages sent today:"
+               textFill="WHITE" wrapText="true">
+            <font>
+                <Font size="10.0"/>
+            </font>
+        </Label>
+        <Label layoutX="25.0" layoutY="211.0" prefHeight="34.0" prefWidth="117.0" text="Characters narrated today:"
+               textFill="WHITE" wrapText="true">
+            <font>
+                <Font size="10.0"/>
+            </font>
+        </Label>
+        <Label fx:id="messagesSentLabel" layoutX="186.0" layoutY="177.0" prefHeight="34.0" prefWidth="107.0" text="0"
+               textAlignment="RIGHT" textFill="WHITE" wrapText="true">
+            <font>
+                <Font name="System Bold" size="11.0"/>
+            </font>
+        </Label>
+        <Label fx:id="charactersNarratedLabel" layoutX="186.0" layoutY="211.0" prefHeight="34.0" prefWidth="107.0"
+               text="0" textAlignment="RIGHT" textFill="WHITE" wrapText="true">
+            <font>
+                <Font name="System Bold" size="11.0"/>
+            </font>
+        </Label>
+        <ImageView fitHeight="34.0" fitWidth="25.0" layoutX="130.0" layoutY="-12.0" pickOnBounds="true"
+                   preserveRatio="true">
+            <image>
+                <Image url="@arrowUp.png"/>
+            </image>
+        </ImageView>
+        <Label fx:id="windowTitle" layoutX="114.0" layoutY="13.0" prefHeight="38.0" prefWidth="125.0" text="Narrator"
+               textAlignment="RIGHT" underline="true">
+            <font>
+                <Font name="Candara Bold" size="28.0"/>
+            </font>
+            <textFill>
+                <LinearGradient endX="1.0" endY="1.0">
+                    <stops>
+                        <Stop>
+                            <color>
+                                <Color red="1.0" green="1.0" blue="1.0"/>
+                            </color>
+                        </Stop>
+                        <Stop offset="1.0">
+                            <color>
+                                <Color red="1.0" green="1.0" blue="1.0"/>
+                            </color>
+                        </Stop>
+                    </stops>
+                </LinearGradient>
+            </textFill>
+        </Label>
+        <Label fx:id="premiumWindowTitle" layoutX="71.0" layoutY="4.0" prefHeight="55.0" prefWidth="242.0"
+               text="Narrator Premium" textAlignment="RIGHT" underline="true" visible="false">
+            <font>
+                <Font name="Candara Bold" size="28.0"/>
+            </font>
+            <textFill>
+                <LinearGradient endX="1.0" endY="0.6624606054287979" startX="1.0">
+                    <stops>
+                        <Stop>
+                            <color>
+                                <Color red="0.8399999737739563" green="0.7275800108909607" blue="0.22679999470710754"/>
+                            </color>
+                        </Stop>
+                        <Stop offset="0.919081137120096">
+                            <color>
+                                <Color red="0.8199999928474426" green="0.7035599946975708" blue="0.2378000020980835"
+                                       opacity="0.7892894148826599"/>
+                            </color>
+                        </Stop>
+                        <Stop offset="1.0">
+                            <color>
+                                <Color red="0.8299999833106995" green="0.7204399704933167" blue="0.23240000009536743"
+                                       opacity="0.6725888252258301"/>
+                            </color>
+                        </Stop>
+                    </stops>
+                </LinearGradient>
+            </textFill>
+        </Label>
+
+    </AnchorPane>
+    <AnchorPane fx:id="panelSettings" layoutY="72.0" prefHeight="407.0" prefWidth="356.0"
+                style="-fx-background-color: transparent;" visible="false">
+        <children>
+            <ImageView fitHeight="407.0" fitWidth="356.0" pickOnBounds="true">
+                <image>
+                    <Image url="@appBackgroundBLUR.png"/>
+                </image>
+            </ImageView>
+            <Label layoutX="25.0" layoutY="17.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR SOURCE"
+                   textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <ComboBox fx:id="sources" layoutX="178.0" layoutY="30.0" onAction="#selectSource" prefHeight="25.0"
+                      prefWidth="125.0" promptText="SELF" style="-fx-border-color: white; -fx-background-radius: 5em;"
+                      stylesheets="@comboBoxStyle.css">
+                <items>
+                    <FXCollections fx:factory="observableArrayList">
+                        <String fx:value="SELF"/>
+                        <String fx:value="PARTY"/>
+                        <String fx:value="TEAM"/>
+                        <String fx:value="SELF+PARTY"/>
+                        <String fx:value="SELF+TEAM"/>
+                        <String fx:value="PARTY+TEAM"/>
+                        <String fx:value="PARTY+TEAM+ALL"/>
+                        <String fx:value="SELF+PARTY+TEAM"/>
+                        <String fx:value="SELF+TEAM+ALL"/>
+                        <String fx:value="SELF+PARTY+TEAM+ALL"/>
+                    </FXCollections>
+                </items>
+            </ComboBox>
+            <Label layoutX="25.0" layoutY="30.0" prefHeight="42.0" prefWidth="117.0"
+                   text="Toggle the message sources which will be allowed." textFill="#f2efef" wrapText="true">
+                <font>
+                    <Font size="9.0"/>
+                </font>
+            </Label>
+            <Separator layoutX="33.0" layoutY="359.0" prefHeight="10.0" prefWidth="289.0"/>
+            <Label layoutX="25.0" layoutY="80.0" prefHeight="25.0" prefWidth="117.0" text="SYSTEM MIC" textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <Label layoutX="25.0" layoutY="97.0" prefHeight="34.0" prefWidth="117.0"
+                   text="Toggle if default mic's audio will be routed to output." textFill="#f2efef" wrapText="true">
+                <font>
+                    <Font size="9.0"/>
+                </font>
+            </Label>
+            <JFXToggleButton fx:id="micButton" layoutX="169.0" layoutY="80.0" onAction="#toggleMic" prefHeight="58.0"
+                             prefWidth="55.0" text=" " toggleColor="WHITE"/>
+            <Label layoutX="25.0" layoutY="140.0" prefHeight="25.0" prefWidth="117.0" text="PRIVATE SOURCE"
+                   textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <Label layoutX="25.0" layoutY="162.0" prefHeight="34.0" prefWidth="117.0"
+                   text="Toggle if private messages will be allowed." textFill="#f2efef" wrapText="true">
+                <font>
+                    <Font size="9.0"/>
+                </font>
+            </Label>
+            <JFXToggleButton fx:id="privateChatButton" layoutX="169.0" layoutY="140.0" onAction="#togglePrivateMessages"
+                             prefHeight="58.0" prefWidth="55.0" text=" " toggleColor="WHITE"/>
+            <ImageView fitHeight="34.0" fitWidth="25.0" layoutX="278.0" layoutY="-13.0" pickOnBounds="true"
+                       preserveRatio="true">
+                <image>
+                    <Image url="@arrowUp.png"/>
+                </image>
+            </ImageView>
+            <Label layoutX="25.0" layoutY="198.0" prefHeight="25.0" prefWidth="117.0" text="MIC KEYBIND"
+                   textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <Label fx:id="keybindText" layoutX="25.0" layoutY="218.0" prefHeight="34.0" prefWidth="117.0"
+                   text="Pick a keybind for team mic, currently set to " textFill="#f2efef" wrapText="true">
+                <font>
+                    <Font size="9.0"/>
+                </font>
+            </Label>
+            <TextField fx:id="keybindTextField" layoutX="178.0" layoutY="210.0" onKeyPressed="#keybindChange"
+                       onMouseDragEntered="#enterKeybind" onMouseDragExited="#exitKeybind"
+                       onMouseEntered="#enterKeybind" onMouseExited="#exitKeybind" prefHeight="25.0" prefWidth="125.0"
+                       promptText="Press a key."/>
+            <JFXToggleButton fx:id="teamChatButton" layoutX="178.0" layoutY="248.0" onAction="#toggleTeamChat"
+                             prefHeight="58.0" prefWidth="49.0" selected="true" text=" " toggleColor="WHITE"/>
+            <Label layoutX="25.0" layoutY="252.0" prefHeight="25.0" prefWidth="117.0" text="TEAM BUTTON"
+                   textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <Label fx:id="keybindText1" layoutX="25.0" layoutY="271.0" prefHeight="34.0" prefWidth="133.0"
+                   text="Toggle to press the keybind for team keybind automatically." textFill="#f2efef"
+                   wrapText="true">
+                <font>
+                    <Font size="9.0"/>
+                </font>
+            </Label>
+            <Button fx:id="demoSetting" defaultButton="true" layoutX="75.0" layoutY="313.0" mnemonicParsing="false"
+                    onAction="#showValorantSettingsDemo" prefHeight="32.0" prefWidth="205.0"
+                    style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
+                    text="View valorant settings demo" textAlignment="CENTER" textFill="WHITE">
+                <font>
+                    <Font size="14.0"/>
+                </font>
+            </Button>
+        </children>
+    </AnchorPane>
+    <AnchorPane fx:id="panelInfo" layoutY="82.0" prefHeight="310.0" prefWidth="356.0"
+                style="-fx-background-color: transparent;" visible="false">
+        <children>
+            <ImageView fitHeight="316.0" fitWidth="356.0" layoutY="-3.0" pickOnBounds="true">
+                <image>
+                    <Image url="@appBackgroundBLUR.png"/>
+                </image>
+            </ImageView>
+            <Label layoutX="25.0" layoutY="120.0" prefHeight="25.0" prefWidth="117.0" text="Valorant Account:"
+                   textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <Label fx:id="accountLabel" layoutX="142.0" layoutY="116.0" prefHeight="34.0" prefWidth="117.0"
+                   text="EXAMPLE#EXAMPLE" textFill="#f2efef" wrapText="true">
+                <font>
+                    <Font name="System Bold" size="9.0"/>
+                </font>
+            </Label>
+            <ImageView fitHeight="93.0" fitWidth="117.0" layoutX="132.0" layoutY="14.0" pickOnBounds="true"
+                       preserveRatio="true">
+                <image>
+                    <Image url="@userBIG.png"/>
+                </image>
+            </ImageView>
+            <Label layoutX="25.0" layoutY="150.0" prefHeight="25.0" prefWidth="117.0" text="User ID:" textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <Label fx:id="userIDLabel" layoutX="142.0" layoutY="146.0" prefHeight="34.0" prefWidth="117.0" text="0000"
+                   textFill="#f2efef" wrapText="true">
+                <font>
+                    <Font name="System Bold" size="9.0"/>
+                </font>
+            </Label>
+            <Label layoutX="25.0" layoutY="180.0" prefHeight="25.0" prefWidth="117.0" text="Quota left:"
+                   textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <Label fx:id="quotaLabel" layoutX="142.0" layoutY="176.0" prefHeight="34.0" prefWidth="117.0" text="0000"
+                   textFill="#f2efef" wrapText="true">
+                <font>
+                    <Font name="System Bold" size="9.0"/>
+                </font>
+            </Label>
+            <Label layoutX="25.0" layoutY="210.0" prefHeight="25.0" prefWidth="117.0" text="Premium:" textFill="WHITE">
+                <font>
+                    <Font name="System Bold" size="12.0"/>
+                </font>
+            </Label>
+            <Label fx:id="premiumDateLabel" layoutX="142.0" layoutY="206.0" prefHeight="34.0" prefWidth="117.0"
+                   text="Vaild till DD-MM-YYYY" textFill="#f2efef" wrapText="true">
+                <font>
+                    <Font name="System Bold" size="9.0"/>
+                </font>
+            </Label>
+            <ImageView fitHeight="34.0" fitWidth="25.0" layoutX="212.0" layoutY="-12.0" pickOnBounds="true"
+                       preserveRatio="true">
+                <image>
+                    <Image url="@arrowUp.png"/>
+                </image>
+            </ImageView>
+            <Button fx:id="subscribeButton" defaultButton="true" layoutX="100.0" layoutY="257.0" mnemonicParsing="false"
+                    onAction="#browseSubscription" prefHeight="41.0" prefWidth="155.0"
+                    style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
+                    text="Subscribe" textAlignment="CENTER">
+                <font>
+                    <Font name="Candara Bold" size="22.0"/>
+                </font>
+                <textFill>
+                    <LinearGradient endX="1.0" endY="0.9873817064784679" startX="1.0">
+                        <stops>
+                            <Stop>
+                                <color>
+                                    <Color red="0.8313725590705872" green="0.7176470756530762"
+                                           blue="0.250980406999588"/>
+                                </color>
+                            </Stop>
+                            <Stop offset="0.5233125988978009">
+                                <color>
+                                    <Color red="0.8313725590705872" green="0.7176470756530762"
+                                           blue="0.250980406999588"/>
+                                </color>
+                            </Stop>
+                            <Stop offset="0.6636792710208981">
+                                <color>
+                                    <Color red="0.550000011920929" green="0.527999997138977"
+                                           blue="0.10999999940395355"/>
+                                </color>
+                            </Stop>
+                            <Stop offset="1.0">
+                                <color>
+                                    <Color red="0.8299999833106995" green="0.7138000130653381"
+                                           blue="0.24899999797344208" opacity="0.6700000166893005"/>
+                                </color>
+                            </Stop>
+                        </stops>
+                    </LinearGradient>
+                </textFill>
+            </Button>
+        </children>
+    </AnchorPane>
+    <AnchorPane fx:id="panelLogin" layoutY="73.0" prefHeight="355.0" prefWidth="356.0"
+                style="-fx-background-color: transparent;">
+        <children>
+            <ImageView fitHeight="296.0" fitWidth="356.0" layoutY="-2.0" pickOnBounds="true">
+                <image>
+                    <Image url="@appBackgroundBLUR.png"/>
+                </image>
+            </ImageView>
+            <Label layoutX="100.0" layoutY="40.0" prefHeight="38.0" prefWidth="155.0" text="VALORANT STARTUP"
+                   textFill="WHITE">
+                <font>
+                    <Font name="Candara Bold" size="17.0"/>
+                </font>
+            </Label>
+            <Separator layoutX="33.0" layoutY="251.0" prefHeight="19.0" prefWidth="289.0"/>
+            <ImageView fitHeight="34.0" fitWidth="25.0" layoutX="58.0" layoutY="-8.0" pickOnBounds="true"
+                       preserveRatio="true">
+                <image>
+                    <Image url="@arrowUp.png"/>
+                </image>
+            </ImageView>
+            <Label fx:id="premiumWindowTitle1" layoutX="71.0" layoutY="4.0" prefHeight="55.0" prefWidth="242.0"
+                   text="Narrator Premium" textAlignment="RIGHT" underline="true" visible="false">
+                <font>
+                    <Font name="Candara Bold" size="28.0"/>
+                </font>
+                <textFill>
+                    <LinearGradient endX="1.0" endY="0.6624606054287979" startX="1.0">
+                        <stops>
+                            <Stop>
+                                <color>
+                                    <Color red="0.8399999737739563" green="0.7275800108909607"
+                                           blue="0.22679999470710754"/>
+                                </color>
+                            </Stop>
+                            <Stop offset="0.919081137120096">
+                                <color>
+                                    <Color red="0.8199999928474426" green="0.7035599946975708" blue="0.2378000020980835"
+                                           opacity="0.7892894148826599"/>
+                                </color>
+                            </Stop>
+                            <Stop offset="1.0">
+                                <color>
+                                    <Color red="0.8299999833106995" green="0.7204399704933167"
+                                           blue="0.23240000009536743" opacity="0.6725888252258301"/>
+                                </color>
+                            </Stop>
+                        </stops>
+                    </LinearGradient>
+                </textFill>
+            </Label>
+            <Label layoutX="61.0" layoutY="78.0" prefHeight="42.0" prefWidth="242.0"
+                   text=" This window will automatically redirect to other windows when the startup process is completed!"
+                   textFill="#fffefe" wrapText="true">
+                <font>
+                    <Font size="11.0"/>
+                </font>
+            </Label>
+            <ProgressBar fx:id="progressLogin" layoutX="100.0" layoutY="142.0" opacity="0.87" prefHeight="34.0"
+                         prefWidth="140.0" progress="1.0"/>
+            <Label fx:id="progressLoginLabel" layoutX="107.0" layoutY="142.0" prefHeight="34.0" prefWidth="133.0"
+                   text="Starting valorant" textFill="#fffefe"/>
+        </children>
+    </AnchorPane>
+</AnchorPane>
