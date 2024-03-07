@@ -1,7 +1,10 @@
 # Valorant Narrator App - Open Sourced
 
 Introducing our innovative app that transforms Valorant game chat messages into real-time party and team voice communication, offering a unique gaming experience like never before. With customizable voices, including the authentic in-game agent voices from Valorant, our app adds an immersive layer to your gameplay. Imagine your favorite agent communicating your strategy or witty remarks directly through your mic.
+
 App site: https://valnarrator.tech
+
+Discord: https://discord.gg/RWP25YQDcf
 
 ## Features
 - Real-time conversion of game chat messages into voice.
