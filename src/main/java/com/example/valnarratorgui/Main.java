@@ -82,6 +82,7 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        Files.createDirectories(Paths.get(CONFIG_DIR));
         RegistrationInfo ri = fetchRegistrationInfo();
         if (ri.registered()) {
             encrypt(ri.signature(), ri.salt());
