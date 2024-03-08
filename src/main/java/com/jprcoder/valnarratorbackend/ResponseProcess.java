@@ -1,4 +1,4 @@
-package com.example.valnarratorbackend;
+package com.jprcoder.valnarratorbackend;
 
 public class ResponseProcess {
     private boolean isFinished = false;

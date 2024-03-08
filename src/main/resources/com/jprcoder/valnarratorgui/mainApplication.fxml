@@ -9,7 +9,7 @@
 <?import javafx.scene.text.*?>
 <?import java.lang.*?>
 <AnchorPane xmlns:fx="http://javafx.com/fxml/1" style="-fx-background-color: transparent;"
-            xmlns="http://javafx.com/javafx/21" fx:controller="com.example.valnarratorgui.ValNarratorController">
+            xmlns="http://javafx.com/javafx/21" fx:controller="com.jprcoder.valnarratorgui.ValNarratorController">
     <AnchorPane fx:id="topBar" prefHeight="55.0" prefWidth="356.0" style="-fx-background-color: #1C2C3C;">
         <ImageView fx:id="btnUser" fitHeight="25.0" fitWidth="34.0" layoutX="130.0" layoutY="19.0"
                    onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">

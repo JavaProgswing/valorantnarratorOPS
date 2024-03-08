@@ -1,16 +1,16 @@
-package com.example.valnarratorgui;
+package com.jprcoder.valnarratorgui;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import ch.qos.logback.core.util.StatusPrinter;
-import com.example.valnarratorbackend.CustomFormatter;
-import com.example.valnarratorencryption.Encryption;
-import com.example.valnarratorencryption.Signature;
-import com.example.valnarratorencryption.SignatureValidator;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.jprcoder.valnarratorencryption.Encryption;
+import com.jprcoder.valnarratorencryption.Signature;
+import com.jprcoder.valnarratorencryption.SignatureValidator;
 import javafx.application.Application;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.crypto.BadPaddingException;
@@ -41,15 +41,14 @@ record RegistrationInfo(boolean registered, String signature, String salt) {
 
 public class Main {
 
-    public static final double currentVersion = 2.5;
     public static final String serialNumber;
-    public static final String CONFIG_DIR = System.getenv("APPDATA") + "\\ValorantNarrator";
-    private static Properties properties;
+    public static final String CONFIG_DIR = Paths.get(System.getenv("APPDATA") + "ValorantNarrator").toString();
     private static final String installerName = "ValNarrator-setup.exe";
     private static final String versionInfoUrl = "https://api.valnarrator.tech/version/latest/info";
     private static final String installerDownloadUrl = "https://api.valnarrator.tech/installer/version/latest";
     private static final String registrationCheckUrl = "https://api.valnarrator.tech/register";
-
+    public static double currentVersion;
+    private static Properties properties;
     private static char[] secretKey, secretSalt;
 
     static {
@@ -62,13 +61,13 @@ public class Main {
 
     private static void encrypt(String signature, String salt) {
         try {
-            Encryption.encrypt(signature, CONFIG_DIR+"\\secretSign.bin");
+            Encryption.encrypt(signature, Paths.get(CONFIG_DIR + "secretSign.bin").toString());
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
             throw new RuntimeException(e);
         }
         try {
-            Encryption.encrypt(salt, CONFIG_DIR+"\\secretSalt.bin");
+            Encryption.encrypt(salt, Paths.get(CONFIG_DIR + "secretSalt.bin").toString());
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
             throw new RuntimeException(e);
@@ -82,6 +81,8 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        String fullVersioning = properties.getProperty("version");
+        currentVersion = Double.parseDouble(fullVersioning.substring(0, fullVersioning.lastIndexOf('.')));
         Files.createDirectories(Paths.get(CONFIG_DIR));
         RegistrationInfo ri = fetchRegistrationInfo();
         if (ri.registered()) {
@@ -90,8 +91,8 @@ public class Main {
             secretSalt = ri.salt().toCharArray();
         } else {
             try {
-                secretKey = Encryption.decrypt(CONFIG_DIR+"\\secretSign.bin").toCharArray();
-                secretSalt = Encryption.decrypt(CONFIG_DIR+"\\secretSalt.bin").toCharArray();
+                secretKey = Encryption.decrypt(Paths.get(CONFIG_DIR + "secretSign.bin").toString()).toCharArray();
+                secretSalt = Encryption.decrypt(Paths.get(CONFIG_DIR + "secretSalt.bin").toString()).toCharArray();
             } catch (NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException |
                      NoSuchPaddingException | InvalidKeySpecException e) {
                 throw new RuntimeException(e);
@@ -115,7 +116,8 @@ public class Main {
             e.printStackTrace();
             StatusPrinter.print(loggerContext);
         }
-        CustomFormatter logger = new CustomFormatter(Main.class);
+        Logger logger = LoggerFactory.getLogger(Main.class);
+        logger.info(String.format("Starting Valorant-Narrator on v-%1$,.2f", currentVersion));
 
         if (Arrays.asList(args).contains("win-launch") || Arrays.asList(args).contains("win-startup")) {
             VersionInfo vi;
@@ -126,10 +128,9 @@ public class Main {
                 return;
             }
             if (vi.version() > currentVersion) {
-                VersionInfo finalVi = vi;
-                CompletableFuture.runAsync(() -> JOptionPane.showMessageDialog(null, "Changes:" + finalVi.changes() + "\nClick Ok to continue.", "NEW Update v" + finalVi.version(), JOptionPane.INFORMATION_MESSAGE));
-                Toolkit.getDefaultToolkit().beep();
-                final String installerLocation = System.getenv("Temp") + "\\ValorantNarrator";
+                ValNarratorApplication.showInformation("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.");
+
+                final String installerLocation = Paths.get(System.getenv("Temp") + "ValorantNarrator").toString();
                 URL url;
                 URLConnection con;
                 DataInputStream dis;
@@ -145,7 +146,7 @@ public class Main {
                     }
                     dis.close();
                     Files.createDirectories(Paths.get(installerLocation));
-                    fos = new FileOutputStream(installerLocation + "\\" + installerName);
+                    fos = new FileOutputStream(Paths.get(installerLocation, installerName).toString());
                     fos.write(fileData);
                     fos.close();
                 } catch (Exception m) {
@@ -160,7 +161,7 @@ public class Main {
                     VersionInfo finalVi = vi;
                     CompletableFuture.runAsync(() -> JOptionPane.showMessageDialog(null, "Changes:" + finalVi.changes() + "\nClick Ok to continue.", "NEW Update v" + finalVi.version(), JOptionPane.INFORMATION_MESSAGE));
                     Toolkit.getDefaultToolkit().beep();
-                    final String installerLocation = System.getenv("Temp") + "\\ValorantNarrator";
+                    final String installerLocation = Paths.get(System.getenv("Temp") + "ValorantNarrator").toString();
                     URL url;
                     URLConnection con;
                     DataInputStream dis;
@@ -176,7 +177,7 @@ public class Main {
                         }
                         dis.close();
                         Files.createDirectories(Paths.get(installerLocation));
-                        fos = new FileOutputStream(installerLocation + "\\" + installerName);
+                        fos = new FileOutputStream(Paths.get(installerLocation, installerName).toString());
                         fos.write(fileData);
                         fos.close();
                     } catch (Exception m) {
@@ -351,15 +352,9 @@ public class Main {
         } catch (IOException ignored) {
             return null;
         }
-
-        OutputStream os = process.getOutputStream();
         InputStream is = process.getInputStream();
 
         try (is) {
-            try {
-                os.close();
-            } catch (IOException ignored) {
-            }
             Scanner sc = new Scanner(is);
             while (sc.hasNext()) {
                 String next = sc.next();
@@ -372,7 +367,7 @@ public class Main {
         return cpuSerial;
     }
 
-    public static String getSerialNumber() throws IOException {
+    private static String getSerialNumber() throws IOException {
         String cpuSerial = getCPUSerial();
         ArrayList<String> gpuSerial = getGPUSerial();
         ArrayList<String> hddSerial = getDiskSerial();

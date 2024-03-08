@@ -1,14 +1,18 @@
-package com.example.valnarratorgui;
+package com.jprcoder.valnarratorgui;
 
-import com.example.valnarratorbackend.CustomFormatter;
+import dev.mccue.jlayer.decoder.JavaLayerException;
 import dev.mccue.jlayer.player.advanced.AdvancedPlayer;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -18,16 +22,17 @@ import java.io.InputStream;
 import java.util.Objects;
 
 public class ValNarratorApplication extends Application {
-    private static final CustomFormatter logger = new CustomFormatter(ValNarratorApplication.class);
+    private static final Logger logger = LoggerFactory.getLogger(ValNarratorApplication.class);
     private boolean firstTime;
     private TrayIcon trayIcon;
 
     @Override
-    public void start(Stage stage) throws IOException {
+    public void start(Stage stage) throws IOException, AWTException {
         try (InputStream is = Objects.requireNonNull(ValNarratorApplication.class.getResource("startupTune.mp3")).openStream()) {
             AdvancedPlayer player = new AdvancedPlayer(is);
             player.play();
-        } catch (Exception ignored) {
+        } catch (JavaLayerException e) {
+            throw new RuntimeException(e);
         }
 
         FXMLLoader fxmlLoader = new FXMLLoader(ValNarratorApplication.class.getResource("mainApplication.fxml"));
@@ -43,7 +48,7 @@ public class ValNarratorApplication extends Application {
         stage.show();
     }
 
-    public void createTrayIcon(final Stage stage) throws IOException {
+    public void createTrayIcon(final Stage stage) throws IOException, AWTException {
         if (SystemTray.isSupported()) {
             SystemTray tray = SystemTray.getSystemTray();
             Image image = ImageIO.read(Objects.requireNonNull(ValNarratorApplication.class.getResource("appIcon.png")));
@@ -63,10 +68,10 @@ public class ValNarratorApplication extends Application {
             popup.add(closeItem);
             trayIcon = new TrayIcon(Objects.requireNonNull(image), "Valorant Narrator", popup);
             trayIcon.addActionListener(showListener);
-            try {
-                tray.add(trayIcon);
-            } catch (AWTException ignored) {
-            }
+            tray.add(trayIcon);
+        }
+        else {
+            logger.warn("System tray not supported!");
         }
     }
 
@@ -82,11 +87,33 @@ public class ValNarratorApplication extends Application {
             if (SystemTray.isSupported()) {
                 stage.hide();
                 showProgramIsMinimizedMsg();
-            } else {
-                logger.warn("System tray not supported!, exiting application.");
-                System.exit(0);
             }
         });
+    }
+
+    public static void showInformation(String headerText, String contentText){
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setHeaderText(headerText);
+        alert.setContentText(contentText);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        alert.show();
+    }
+    public static void showAlert(String headerText, String contentText){
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setHeaderText(headerText);
+        alert.setContentText(contentText);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        Toolkit.getDefaultToolkit().beep();
+        alert.show();
+    }
+
+    public static void showAlertAndWait(String headerText, String contentText){
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setHeaderText(headerText);
+        alert.setContentText(contentText);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        Toolkit.getDefaultToolkit().beep();
+        alert.showAndWait();
     }
 
 }

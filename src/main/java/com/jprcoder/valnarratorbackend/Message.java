@@ -1,4 +1,4 @@
-package com.example.valnarratorbackend;
+package com.jprcoder.valnarratorbackend;
 
 import org.unbescape.html.HtmlEscape;
 
@@ -32,7 +32,7 @@ public class Message {
         content = bodyMatcher.find() ? HtmlEscape.unescapeHtml(bodyMatcher.group(1)) : null;
         userId = id.split("@")[0];
 
-        isOwnMessage = ChatHandler.getSelfID().equals(userId);
+        isOwnMessage = ChatDataHandler.getInstance().getProperties().getSelfID().equals(userId);
     }
 
     private static MessageType getMessageType(String fromTag, String type) {
@@ -79,8 +79,3 @@ public class Message {
 
 }
 
-record UserParser(int status, DataParser data) {
-    record DataParser(int account_level, String name, String tag) {
-    }
-
-}
