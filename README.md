@@ -21,4 +21,4 @@ Check out our demo on [YouTube](https://www.youtube.com/watch?v=-pZSmC4mX3I) to 
 
 [![Watch the demo](https://img.youtube.com/vi/-pZSmC4mX3I/0.jpg)](https://www.youtube.com/watch?v=-pZSmC4mX3I)
 
-Feel free to explore our [app releases](https://github.com/ValorantNarratorRELEASE) to get started with the app.
+Feel free to explore our [app releases](https://github.com/JavaProgswing/ValorantNarratorRELEASE) to get started with the app.
