@@ -25,13 +25,19 @@ import java.net.URLConnection;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+
+import static com.jprcoder.valnarratorbackend.SerialGenerator.getSerialNumber;
 
 record VersionInfo(long timestamp, double version, String changes) {
 }
@@ -40,14 +46,15 @@ record RegistrationInfo(boolean registered, String signature, String salt) {
 }
 
 public class Main {
-
     public static final String serialNumber;
-    public static final String CONFIG_DIR = Paths.get(System.getenv("APPDATA") + "ValorantNarrator").toString();
+    public static final String CONFIG_DIR = Paths.get(System.getenv("APPDATA"), "ValorantNarrator").toString();
+    public static final String LOCK_FILE = Paths.get(CONFIG_DIR, "lockFile").toString();
     private static final String installerName = "ValNarrator-setup.exe";
     private static final String versionInfoUrl = "https://api.valnarrator.tech/version/latest/info";
     private static final String installerDownloadUrl = "https://api.valnarrator.tech/installer/version/latest";
     private static final String registrationCheckUrl = "https://api.valnarrator.tech/register";
     public static double currentVersion;
+    private static Logger logger;
     private static Properties properties;
     private static char[] secretKey, secretSalt;
 
@@ -59,22 +66,55 @@ public class Main {
         }
     }
 
-    private static void encrypt(String signature, String salt) {
+    private static void encryptSignup(String signature, String salt) {
         try {
-            Encryption.encrypt(signature, Paths.get(CONFIG_DIR + "secretSign.bin").toString());
+            Encryption.encrypt(signature, Paths.get(CONFIG_DIR, "secretSign.bin").toString());
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(null, "Could not initialize app properly, try again with administrator!", "Not Registered", JOptionPane.ERROR_MESSAGE);
+            System.exit(-1);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
             throw new RuntimeException(e);
         }
         try {
-            Encryption.encrypt(salt, Paths.get(CONFIG_DIR + "secretSalt.bin").toString());
+            Encryption.encrypt(salt, Paths.get(CONFIG_DIR, "secretSalt.bin").toString());
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(null, "Could not initialize app properly, try again with administrator!", "Not Registered", JOptionPane.WARNING_MESSAGE);
+            System.exit(-1);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
             throw new RuntimeException(e);
         }
     }
 
+    private static boolean lockInstance(final String lockFile) {
+        try {
+            File file = new File(lockFile);
+            file.createNewFile();
+            RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
+            FileLock lock = randomAccessFile.getChannel().tryLock();
+            if (lock == null) {
+                randomAccessFile.close();
+                JOptionPane.showMessageDialog(null, "Another instance of this application is already running!", "App", JOptionPane.WARNING_MESSAGE);
+                System.exit(0);
+            }
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    lock.release();
+                    randomAccessFile.close();
+                    Files.delete(Paths.get(lockFile));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return true;
+    }
+
     public static void main(String[] args) throws IOException {
+        lockInstance(LOCK_FILE);
         try (InputStream inputStream = Objects.requireNonNull(Main.class.getResource("config.properties")).openStream()) {
             properties = new Properties();
             properties.load(inputStream);
@@ -86,19 +126,19 @@ public class Main {
         Files.createDirectories(Paths.get(CONFIG_DIR));
         RegistrationInfo ri = fetchRegistrationInfo();
         if (ri.registered()) {
-            encrypt(ri.signature(), ri.salt());
+            encryptSignup(ri.signature(), ri.salt());
             secretKey = ri.signature().toCharArray();
             secretSalt = ri.salt().toCharArray();
         } else {
             try {
-                secretKey = Encryption.decrypt(Paths.get(CONFIG_DIR + "secretSign.bin").toString()).toCharArray();
-                secretSalt = Encryption.decrypt(Paths.get(CONFIG_DIR + "secretSalt.bin").toString()).toCharArray();
+                secretKey = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSign.bin").toString()).toCharArray();
+                secretSalt = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSalt.bin").toString()).toCharArray();
+            } catch (FileNotFoundException e) {
+                JOptionPane.showMessageDialog(null, "You are not registered, please contact support!", "Not Registered", JOptionPane.WARNING_MESSAGE);
+                System.exit(-1);
             } catch (NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException |
                      NoSuchPaddingException | InvalidKeySpecException e) {
                 throw new RuntimeException(e);
-            } catch (FileNotFoundException e) {
-                CompletableFuture.runAsync(() -> JOptionPane.showMessageDialog(null, "You are not registered, please contact support!", "Not Registered", JOptionPane.WARNING_MESSAGE));
-                return;
             }
         }
         boolean debugEnabled = Arrays.asList(args).contains("-debug");
@@ -116,7 +156,7 @@ public class Main {
             e.printStackTrace();
             StatusPrinter.print(loggerContext);
         }
-        Logger logger = LoggerFactory.getLogger(Main.class);
+        logger = LoggerFactory.getLogger(Main.class);
         logger.info(String.format("Starting Valorant-Narrator on v-%1$,.2f", currentVersion));
 
         if (Arrays.asList(args).contains("win-launch") || Arrays.asList(args).contains("win-startup")) {
@@ -130,7 +170,7 @@ public class Main {
             if (vi.version() > currentVersion) {
                 ValNarratorApplication.showInformation("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.");
 
-                final String installerLocation = Paths.get(System.getenv("Temp") + "ValorantNarrator").toString();
+                final String installerLocation = Paths.get(System.getenv("Temp"), "ValorantNarrator").toString();
                 URL url;
                 URLConnection con;
                 DataInputStream dis;
@@ -161,7 +201,7 @@ public class Main {
                     VersionInfo finalVi = vi;
                     CompletableFuture.runAsync(() -> JOptionPane.showMessageDialog(null, "Changes:" + finalVi.changes() + "\nClick Ok to continue.", "NEW Update v" + finalVi.version(), JOptionPane.INFORMATION_MESSAGE));
                     Toolkit.getDefaultToolkit().beep();
-                    final String installerLocation = Paths.get(System.getenv("Temp") + "ValorantNarrator").toString();
+                    final String installerLocation = Paths.get(System.getenv("Temp"), "ValorantNarrator").toString();
                     URL url;
                     URLConnection con;
                     DataInputStream dis;
@@ -250,129 +290,6 @@ public class Main {
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
-    }
-
-
-    private static ArrayList<String> getMBoardSerial() throws IOException {
-        ArrayList<String> MBoardSerial = new ArrayList<>();
-        Runtime runtime = Runtime.getRuntime();
-        Process process;
-        try {
-            process = runtime.exec(new String[]{"wmic", "baseboard", "get", "serialnumber"});
-        } catch (IOException ignored) {
-            return MBoardSerial;
-        }
-
-        OutputStream os = process.getOutputStream();
-        InputStream is = process.getInputStream();
-
-        try (is) {
-            try {
-                os.close();
-            } catch (IOException ignored) {
-            }
-            Scanner sc = new Scanner(is);
-            sc.nextLine();
-            while (sc.hasNext()) {
-                String serial = sc.nextLine().trim().replace("\n", "");
-                if (serial.isEmpty()) continue;
-                MBoardSerial.add(serial);
-            }
-        }
-        return MBoardSerial;
-    }
-
-
-    private static ArrayList<String> getDiskSerial() throws IOException {
-        ArrayList<String> diskSerial = new ArrayList<>();
-        Runtime runtime = Runtime.getRuntime();
-        Process process;
-        try {
-            process = runtime.exec(new String[]{"wmic", "diskdrive", "get", "serialnumber"});
-        } catch (IOException ignored) {
-            return diskSerial;
-        }
-
-        OutputStream os = process.getOutputStream();
-        InputStream is = process.getInputStream();
-
-        try (is) {
-            try {
-                os.close();
-            } catch (IOException ignored) {
-            }
-            Scanner sc = new Scanner(is);
-            sc.nextLine();
-            while (sc.hasNext()) {
-                String serial = sc.nextLine().trim().replace("\n", "");
-                if (serial.isEmpty()) continue;
-                diskSerial.add(serial);
-            }
-        }
-        return diskSerial;
-    }
-
-
-    private static ArrayList<String> getGPUSerial() throws IOException {
-        ArrayList<String> gpuSerial = new ArrayList<>();
-        Runtime runtime = Runtime.getRuntime();
-        Process process;
-        try {
-            process = runtime.exec(new String[]{"wmic", "PATH", "Win32_VideoController", "GET", "PNPDeviceID"});
-        } catch (IOException ignored) {
-            return gpuSerial;
-        }
-
-        OutputStream os = process.getOutputStream();
-        InputStream is = process.getInputStream();
-
-        try (is) {
-            try {
-                os.close();
-            } catch (IOException ignored) {
-            }
-            Scanner sc = new Scanner(is);
-            sc.nextLine();
-            while (sc.hasNext()) {
-                String serial = sc.nextLine().trim().replace("\n", "");
-                if (serial.isEmpty()) continue;
-                gpuSerial.add(serial.substring(serial.indexOf('\\') + 1));
-            }
-        }
-        return gpuSerial;
-    }
-
-
-    private static String getCPUSerial() throws IOException {
-        String cpuSerial = null;
-        Runtime runtime = Runtime.getRuntime();
-        Process process;
-        try {
-            process = runtime.exec(new String[]{"wmic", "cpu", "get", "ProcessorId"});
-        } catch (IOException ignored) {
-            return null;
-        }
-        InputStream is = process.getInputStream();
-
-        try (is) {
-            Scanner sc = new Scanner(is);
-            while (sc.hasNext()) {
-                String next = sc.next();
-                if ("ProcessorId".equals(next)) {
-                    cpuSerial = sc.next().trim();
-                    break;
-                }
-            }
-        }
-        return cpuSerial;
-    }
-
-    private static String getSerialNumber() throws IOException {
-        String cpuSerial = getCPUSerial();
-        ArrayList<String> gpuSerial = getGPUSerial();
-        ArrayList<String> hddSerial = getDiskSerial();
-        ArrayList<String> mBoardSerial = getMBoardSerial();
-        return String.valueOf(Objects.hash(cpuSerial, gpuSerial, hddSerial, mBoardSerial));
     }
 
     public static char[] getSecretKey() {

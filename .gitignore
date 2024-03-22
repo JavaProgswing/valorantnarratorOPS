@@ -32,3 +32,6 @@ build/
 .vscode/
 
 /xmpp/node_modules/
+/src/main/java/com/jprcoder/valnarratorencryption/
+/mvnw.cmd
+/mvnw
