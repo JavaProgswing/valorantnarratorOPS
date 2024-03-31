@@ -27,6 +27,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.channels.FileLock;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -48,7 +49,8 @@ record RegistrationInfo(boolean registered, String signature, String salt) {
 public class Main {
     public static final String serialNumber;
     public static final String CONFIG_DIR = Paths.get(System.getenv("APPDATA"), "ValorantNarrator").toString();
-    public static final String LOCK_FILE = Paths.get(CONFIG_DIR, "lockFile").toString();
+    public static final String LOCK_FILE_NAME = "lockFile";
+    public static final String LOCK_FILE = Paths.get(CONFIG_DIR, LOCK_FILE_NAME).toString();
     private static final String installerName = "ValNarrator-setup.exe";
     private static final String versionInfoUrl = "https://api.valnarrator.tech/version/latest/info";
     private static final String installerDownloadUrl = "https://api.valnarrator.tech/installer/version/latest";
@@ -89,6 +91,7 @@ public class Main {
 
     private static boolean lockInstance(final String lockFile) {
         try {
+            Files.createDirectories(Path.of(CONFIG_DIR));
             File file = new File(lockFile);
             file.createNewFile();
             RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
@@ -108,7 +111,7 @@ public class Main {
                 }
             }));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return true;
     }

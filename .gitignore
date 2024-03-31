@@ -35,3 +35,4 @@ build/
 /src/main/java/com/jprcoder/valnarratorencryption/
 /mvnw.cmd
 /mvnw
+/src/main/resources/com/jprcoder/valnarratorgui/config.properties

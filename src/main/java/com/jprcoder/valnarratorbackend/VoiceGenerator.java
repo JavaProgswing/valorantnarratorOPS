@@ -40,7 +40,7 @@ public class VoiceGenerator {
     private static final ResponseProcess isVoiceActive;
     private static final GsonBuilder builder;
     private static final ArrayList<String> normalVoices, neuralVoices;
-    private static boolean isSpeaking = false, isValorantVoice = false, isTeamKeyDisabled = false, isStartupPromptRequired = true;
+    private static boolean isSpeaking = false, isValorantVoice = false, isTeamKeyDisabled = true, isStartupPromptRequired = true;
     private static String currentVoice = "Matthew";
 
     static {
@@ -72,17 +72,12 @@ public class VoiceGenerator {
         }
         Platform.runLater(() -> ValNarratorController.getLatestInstance().teamChatButton.setSelected(isTeamKeyDisabled));
         CompletableFuture.runAsync(() -> {
+            if (!ValNarratorController.getLatestInstance().getVoicesVisibility() && !ValNarratorController.getLatestInstance().isSelectingKeybind() && isTeamKeyDisabled) {
+                robot.keyPress(keyEvent);
+            }
             while (isVoiceActive.isRunning()) {
-                if (!ValNarratorController.getLatestInstance().getVoicesVisibility() && !ValNarratorController.getLatestInstance().isSelectingKeybind() && isTeamKeyDisabled) {
-                    robot.keyPress(keyEvent);
-                }
                 try {
                     Thread.sleep(500);
-                } catch (InterruptedException ignored) {
-                }
-                robot.keyRelease(keyEvent);
-                try {
-                    Thread.sleep(5);
                 } catch (InterruptedException ignored) {
                 }
             }
@@ -162,17 +157,12 @@ public class VoiceGenerator {
         isVoiceActive.reset();
         ValNarratorController.getLatestInstance().keybindTextField.setDisable(false);
         CompletableFuture.runAsync(() -> {
+            if (!ValNarratorController.getLatestInstance().getVoicesVisibility() && !ValNarratorController.getLatestInstance().isSelectingKeybind() && isTeamKeyDisabled) {
+                robot.keyPress(keyEvent);
+            }
             while (isVoiceActive.isRunning()) {
-                if (!ValNarratorController.getLatestInstance().getVoicesVisibility() && !ValNarratorController.getLatestInstance().isSelectingKeybind() && isTeamKeyDisabled) {
-                    robot.keyPress(keyEvent);
-                }
                 try {
                     Thread.sleep(500);
-                } catch (InterruptedException ignored) {
-                }
-                robot.keyRelease(keyEvent);
-                try {
-                    Thread.sleep(5);
                 } catch (InterruptedException ignored) {
                 }
             }
