@@ -1,0 +1,25 @@
+/* styles.css */
+#voices .text {
+    -fx-fill: white; /* Set the text color to red */
+}
+
+#voices {
+    -fx-background-color: transparent; /* Set the background to transparent */
+}
+
+#voices .list-cell {
+    -fx-background-color: #1C2C3C; /* Set the background of the selected item to transparent */
+}
+
+#sources {
+    -fx-background-color: transparent; /* Set the background to transparent */
+}
+
+#sources .text {
+    -fx-fill: white; /* Set the text color to red */
+}
+
+#sources .list-cell {
+    -fx-background-color: #1C2C3C; /* Set the background of the selected item to transparent */
+}
+
