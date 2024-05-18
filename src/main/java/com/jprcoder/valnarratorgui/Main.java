@@ -4,11 +4,10 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import ch.qos.logback.core.util.StatusPrinter;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
+import com.jprcoder.valnarratorbackend.RegistrationInfo;
+import com.jprcoder.valnarratorbackend.VersionInfo;
 import com.jprcoder.valnarratorencryption.Encryption;
-import com.jprcoder.valnarratorencryption.Signature;
-import com.jprcoder.valnarratorencryption.SignatureValidator;
 import javafx.application.Application;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,12 +18,6 @@ import javax.crypto.NoSuchPaddingException;
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,27 +29,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 
+import static com.jprcoder.valnarratorbackend.APIHandler.*;
 import static com.jprcoder.valnarratorbackend.SerialGenerator.getSerialNumber;
-
-record VersionInfo(long timestamp, double version, String changes) {
-}
-
-record RegistrationInfo(boolean registered, String signature, String salt) {
-}
 
 public class Main {
     public static final String serialNumber;
     public static final String CONFIG_DIR = Paths.get(System.getenv("APPDATA"), "ValorantNarrator").toString();
     public static final String LOCK_FILE_NAME = "lockFile";
     public static final String LOCK_FILE = Paths.get(CONFIG_DIR, LOCK_FILE_NAME).toString();
-    private static final String installerName = "ValNarrator-setup.exe";
-    private static final String versionInfoUrl = "https://api.valnarrator.tech/version/latest/info";
-    private static final String installerDownloadUrl = "https://api.valnarrator.tech/installer/version/latest";
-    private static final String registrationCheckUrl = "https://api.valnarrator.tech/register";
+    public static final String installerName = "ValNarrator-setup.exe";
     public static double currentVersion;
-    private static Logger logger;
     private static Properties properties;
     private static char[] secretKey, secretSalt;
 
@@ -89,10 +72,10 @@ public class Main {
         }
     }
 
-    private static boolean lockInstance(final String lockFile) {
+    private static boolean lockInstance() {
         try {
             Files.createDirectories(Path.of(CONFIG_DIR));
-            File file = new File(lockFile);
+            File file = new File(Main.LOCK_FILE);
             file.createNewFile();
             RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
             FileLock lock = randomAccessFile.getChannel().tryLock();
@@ -105,7 +88,7 @@ public class Main {
                 try {
                     lock.release();
                     randomAccessFile.close();
-                    Files.delete(Paths.get(lockFile));
+                    Files.delete(Paths.get(Main.LOCK_FILE));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -117,33 +100,6 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        lockInstance(LOCK_FILE);
-        try (InputStream inputStream = Objects.requireNonNull(Main.class.getResource("config.properties")).openStream()) {
-            properties = new Properties();
-            properties.load(inputStream);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        String fullVersioning = properties.getProperty("version");
-        currentVersion = Double.parseDouble(fullVersioning.substring(0, fullVersioning.lastIndexOf('.')));
-        Files.createDirectories(Paths.get(CONFIG_DIR));
-        RegistrationInfo ri = fetchRegistrationInfo();
-        if (ri.registered()) {
-            encryptSignup(ri.signature(), ri.salt());
-            secretKey = ri.signature().toCharArray();
-            secretSalt = ri.salt().toCharArray();
-        } else {
-            try {
-                secretKey = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSign.bin").toString()).toCharArray();
-                secretSalt = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSalt.bin").toString()).toCharArray();
-            } catch (FileNotFoundException e) {
-                JOptionPane.showMessageDialog(null, "You are not registered, please contact support!", "Not Registered", JOptionPane.WARNING_MESSAGE);
-                System.exit(-1);
-            } catch (NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException |
-                     NoSuchPaddingException | InvalidKeySpecException e) {
-                throw new RuntimeException(e);
-            }
-        }
         boolean debugEnabled = Arrays.asList(args).contains("-debug");
         String logbackConfigFile = "logback-console.xml";
         if (debugEnabled) {
@@ -159,86 +115,91 @@ public class Main {
             e.printStackTrace();
             StatusPrinter.print(loggerContext);
         }
-        logger = LoggerFactory.getLogger(Main.class);
+        Logger logger = LoggerFactory.getLogger(Main.class);
+        try (InputStream inputStream = Objects.requireNonNull(Main.class.getResource("config.properties")).openStream()) {
+            properties = new Properties();
+            properties.load(inputStream);
+        } catch (IOException e) {
+            logger.error("CRITICAL: Could not load app's config properties, exiting!");
+            throw new RuntimeException(e);
+        }
+        String fullVersioning = properties.getProperty("version");
+        currentVersion = Double.parseDouble(fullVersioning.substring(0, fullVersioning.lastIndexOf('.')));
+        boolean insMessage = Arrays.asList(args).contains("-showInstallationPrompt");
+        if (insMessage && args.length == 1) {
+            JOptionPane.showMessageDialog(null, String.format("ValorantNarrator v-%1$,.2f has been installed successfully!", currentVersion), "Installation", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
         logger.info(String.format("Starting Valorant-Narrator on v-%1$,.2f", currentVersion));
+        logger.info(String.format("Build date: %s", properties.getProperty("buildTimestamp")));
 
-        if (Arrays.asList(args).contains("win-launch") || Arrays.asList(args).contains("win-startup")) {
-            VersionInfo vi;
+        Files.createDirectories(Paths.get(CONFIG_DIR));
+        RegistrationInfo ri;
+        try {
+            ri = fetchRegistrationInfo();
+        } catch (com.google.gson.JsonSyntaxException | IOException e) {
+            logger.error("CRITICAL: API is down, exiting!");
+            JOptionPane.showMessageDialog(null, "Our service is unavailable, please try again later!", "API Down", JOptionPane.WARNING_MESSAGE);
+            return;
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        logger.info(String.format("New registration: %b, Serial id: %s", ri.registered(), serialNumber));
+        if (ri.registered()) {
+            encryptSignup(ri.signature(), ri.salt());
+            secretKey = ri.signature().toCharArray();
+            secretSalt = ri.salt().toCharArray();
+        } else {
             try {
-                vi = fetchVersionInfo();
-            } catch (com.google.gson.JsonSyntaxException e) {
-                CompletableFuture.runAsync(() -> JOptionPane.showMessageDialog(null, "Our service is unavailable, please try again later!", "API Down", JOptionPane.WARNING_MESSAGE));
-                return;
+                secretKey = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSign.bin").toString()).toCharArray();
+                secretSalt = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSalt.bin").toString()).toCharArray();
+            } catch (FileNotFoundException e) {
+                logger.warn("CRITICAL: Could not find pre-existing files required for normal usage of app: secretSign.bin, secretSalt.bin. Exiting!");
+                encryptSignup(ri.signature(), ri.salt());
+                secretKey = ri.signature().toCharArray();
+                secretSalt = ri.salt().toCharArray();
+            } catch (NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException |
+                     NoSuchPaddingException | InvalidKeySpecException e) {
+                throw new RuntimeException(e);
             }
-            if (vi.version() > currentVersion) {
-                ValNarratorApplication.showInformation("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.");
+        }
+        if (Arrays.asList(args).contains("win-launch") || Arrays.asList(args).contains("win-startup")) {
+            logger.info("Updater: Checking for updates!");
+            VersionInfo vi;
+            while (true) {
+                versionCheck:
+                {
+                    if (isValorantRunning())
+                        break;
 
-                final String installerLocation = Paths.get(System.getenv("Temp"), "ValorantNarrator").toString();
-                URL url;
-                URLConnection con;
-                DataInputStream dis;
-                FileOutputStream fos;
-                byte[] fileData;
-                try {
-                    url = new URL(installerDownloadUrl);
-                    con = url.openConnection();
-                    dis = new DataInputStream(con.getInputStream());
-                    fileData = new byte[con.getContentLength()];
-                    for (int q = 0; q < fileData.length; q++) {
-                        fileData[q] = dis.readByte();
-                    }
-                    dis.close();
-                    Files.createDirectories(Paths.get(installerLocation));
-                    fos = new FileOutputStream(Paths.get(installerLocation, installerName).toString());
-                    fos.write(fileData);
-                    fos.close();
-                } catch (Exception m) {
-                    m.printStackTrace();
-                }
-                Runtime.getRuntime().exec(String.format("cmd.exe /K \"cd %s && %s /silent\"", installerLocation, installerName));
-                return;
-            }
-            while (!isValorantRunning()) {
-                vi = fetchVersionInfo();
-                if (vi.version() > currentVersion) {
-                    VersionInfo finalVi = vi;
-                    CompletableFuture.runAsync(() -> JOptionPane.showMessageDialog(null, "Changes:" + finalVi.changes() + "\nClick Ok to continue.", "NEW Update v" + finalVi.version(), JOptionPane.INFORMATION_MESSAGE));
-                    Toolkit.getDefaultToolkit().beep();
-                    final String installerLocation = Paths.get(System.getenv("Temp"), "ValorantNarrator").toString();
-                    URL url;
-                    URLConnection con;
-                    DataInputStream dis;
-                    FileOutputStream fos;
-                    byte[] fileData;
                     try {
-                        url = new URL(installerDownloadUrl);
-                        con = url.openConnection();
-                        dis = new DataInputStream(con.getInputStream());
-                        fileData = new byte[con.getContentLength()];
-                        for (int q = 0; q < fileData.length; q++) {
-                            fileData[q] = dis.readByte();
-                        }
-                        dis.close();
-                        Files.createDirectories(Paths.get(installerLocation));
-                        fos = new FileOutputStream(Paths.get(installerLocation, installerName).toString());
-                        fos.write(fileData);
-                        fos.close();
-                    } catch (Exception m) {
-                        m.printStackTrace();
+                        vi = fetchVersionInfo();
+                    } catch (JsonSyntaxException | InterruptedException e) {
+                        logger.error("CRITICAL: Could not find latest versioning info, trying again in a second!");
+                        break versionCheck;
                     }
-                    Runtime.getRuntime().exec(String.format("cmd.exe /K \"cd %s && %s /silent\"", installerLocation, installerName));
-                    return;
+                    if (vi.version() > currentVersion) {
+                        logger.info(String.format("New Update v%f found, updating!", vi.version()));
+                        ValNarratorApplication.showInformation("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.");
+                        long start = System.currentTimeMillis();
+                        Toolkit.getDefaultToolkit().beep();
+                        downloadLatestVersion();
+
+                        logger.info(String.format("Updater finished in %d ms, exiting.", (System.currentTimeMillis() - start)));
+                        return;
+                    }
                 }
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
-            logger.info("Valorant started!");
-            Application.launch(ValNarratorApplication.class, args);
             return;
         }
+        lockInstance();
+        logger.info("Detected normal start-up, launching application!");
         Application.launch(ValNarratorApplication.class, args);
     }
 
@@ -261,38 +222,6 @@ public class Main {
         }
 
         return procs.stream().anyMatch(row -> row.contains(findProcess));
-    }
-
-    private static VersionInfo fetchVersionInfo() {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(versionInfoUrl)).build();
-        String resp;
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            resp = response.body();
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        GsonBuilder builder = new GsonBuilder();
-        builder.setPrettyPrinting();
-
-        Gson gson = builder.create();
-        return gson.fromJson(resp, VersionInfo.class);
-    }
-
-    private static RegistrationInfo fetchRegistrationInfo() {
-        HttpClient client = HttpClient.newHttpClient();
-        Signature sign = SignatureValidator.generateRegistrationSignature(serialNumber);
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(registrationCheckUrl + "?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 409) {
-                return new RegistrationInfo(false, null, null);
-            }
-            return new RegistrationInfo(true, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public static char[] getSecretKey() {

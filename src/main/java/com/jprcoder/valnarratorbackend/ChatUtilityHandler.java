@@ -1,5 +1,6 @@
 package com.jprcoder.valnarratorbackend;
 
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,5 +45,12 @@ public class ChatUtilityHandler {
         Matcher matcher = regex.matcher(message);
         message = matcher.replaceAll(replacement);
         return message;
+    }
+
+    public static String getPlayerName(final String playerID) {
+        final ArrayList<String> playerIDs = new ArrayList<>();
+        playerIDs.add(playerID);
+        final ArrayList<PlayerAccount> playerNames = ChatDataHandler.getInstance().getAPIHandler().getPlayerNames(VoiceGenerator.getAccessToken(), VoiceGenerator.getRiotClientDetails(), VoiceGenerator.getEntitlement().token(), playerIDs);
+        return String.format("%s#%s", playerNames.get(0).GameName(), playerNames.get(0).TagLine());
     }
 }

@@ -4,10 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import com.jfoenix.controls.JFXToggleButton;
-import com.jprcoder.valnarratorbackend.ChatDataHandler;
-import com.jprcoder.valnarratorbackend.Message;
-import com.jprcoder.valnarratorbackend.MessageQuota;
-import com.jprcoder.valnarratorbackend.VoiceGenerator;
+import com.jprcoder.valnarratorbackend.*;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -22,24 +19,23 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
-import java.util.Arrays;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.zip.DataFormatException;
 
-import static com.jprcoder.valnarratorgui.ValNarratorApplication.showAlert;
+import static com.jprcoder.valnarratorgui.ValNarratorApplication.*;
 
 interface XMPPEventDispatcher {
     void dispatchError(XMPPError error) throws InterruptedException, ExecutionException, IOException;
 
     void dispatchEvent(XMPPEvent event);
-}
-
-interface InputCallback {
-    void onInput(String line);
 }
 
 record XMPPError(String reason, int code) {
@@ -62,19 +58,19 @@ public class ValNarratorController implements XMPPEventDispatcher {
     @FXML
     public JFXToggleButton micButton;
     @FXML
+    public JFXToggleButton valorantSettings;
+    @FXML
     public JFXToggleButton privateChatButton;
     @FXML
     public JFXToggleButton teamChatButton;
     @FXML
-    public ComboBox<String> voices, sources;
+    public ComboBox<String> voices, sources, addIgnoredPlayer, removeIgnoredPlayer;
     @FXML
     public Label progressLoginLabel;
     @FXML
     public Label premiumDateLabel;
     @FXML
     public Label userIDLabel;
-    @FXML
-    public Label accountLabel;
     @FXML
     public Label quotaLabel;
     @FXML
@@ -90,6 +86,8 @@ public class ValNarratorController implements XMPPEventDispatcher {
     @FXML
     public Button subscribeButton;
     @FXML
+    public Button voiceSettingsSync;
+    @FXML
     public ProgressBar quotaBar, progressLogin;
     @FXML
     public ImageView btnPower, btnInfo, btnUser, btnSettings;
@@ -102,6 +100,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
     private boolean isVoicesVisible = false;
 
     private boolean selectingKeybind = false;
+    private String lastAddIgnoredPlayerSelectionString, lastRemovedIgnoredPlayerSelectionString;
 
     public ValNarratorController() {
         latestInstance = this;
@@ -116,19 +115,9 @@ public class ValNarratorController implements XMPPEventDispatcher {
     }
 
     public void initialize() {
-        logger.info("Initializing application...");
+        logger.info("Initializing app.");
         lastAnchorPane = panelUser;
-        try {
-            String fileLocation = "SoundVolumeView.exe";
-            long pid = ProcessHandle.current().pid();
-            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
-            Runtime.getRuntime().exec(command);
-            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
-            Runtime.getRuntime().exec(command);
-            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
-            Runtime.getRuntime().exec(command);
-        } catch (IOException ignored) {
-        }
+        long start = System.currentTimeMillis(), appStart = System.currentTimeMillis();
         try {
             String command = "taskkill /F /IM RiotClientServices.exe";
             ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
@@ -136,11 +125,12 @@ public class ValNarratorController implements XMPPEventDispatcher {
             Process process = processBuilder.start();
             int code = process.waitFor();
             if (code == 0) {
-                logger.info("Closed riot client!");
+                logger.info("Forcefully closed riot client!");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(String.format("Killing Riot-Client generated an error: %s", (Object) e.getStackTrace()));
         }
+
         try {
             String command = "taskkill /F /IM VALORANT-Win64-Shipping.exe";
             ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
@@ -148,75 +138,99 @@ public class ValNarratorController implements XMPPEventDispatcher {
             Process process = processBuilder.start();
             int code = process.waitFor();
             if (code == 0) {
-                logger.info("Closed valorant!");
+                logger.info("Forcefully closed valorant!");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(String.format("Killing Valorant generated an error: %s", (Object) e.getStackTrace()));
         }
+
+        logger.info(String.format("Closed riot-client, valorant in %d ms.", (System.currentTimeMillis() - start)));
         try {
-            String command = "taskkill /F /IM node.exe";
-            ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            int code = process.waitFor();
-            if (code == 0) {
-                logger.info("Closed node!");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
+            long pid = ProcessHandle.current().pid();
+            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
+        } catch (IOException e) {
+            logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
         }
+        logger.info("Initialized app's sound output.");
+        logger.info("Initializing xmpp-node.");
         try {
-            String appPath = System.getProperty("user.dir");
-
-            String nodeScriptPath = appPath + "/xmpp";
-
-            ProcessBuilder processBuilder = new ProcessBuilder("node", ".");
-            processBuilder.directory(Paths.get(nodeScriptPath).toFile());
+            final String xmppPath = String.format("%s/ValorantNarrator/valorantNarrator-xmpp.exe", System.getenv("ProgramFiles").replace("\\", "/"));
+            ProcessBuilder processBuilder = new ProcessBuilder(xmppPath);
             processBuilder.redirectErrorStream(true);
-
             Process process = processBuilder.start();
 
             new Thread(() -> {
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line;
-                final IncomingBufferHandler incomingBuffer = new IncomingBufferHandler();
-                try {
-                    while ((line = reader.readLine()) != null) {
-                        try {
-                            Gson gson = new Gson();
-                            JsonObject json = gson.fromJson(line, JsonObject.class);
-                            if (json.has("error")) {
-                                ValNarratorController.getLatestInstance().dispatchError(new XMPPError(json.get("reason").getAsString(), json.get("code").getAsInt()));
+                while (true) {
+                    try {
+                        if ((line = reader.readLine()) == null) break;
+                    } catch (IOException e) {
+                        logger.error(String.format("Reading Xmpp-Node's output generated an error: %s", (Object) e.getStackTrace()));
+                        throw new RuntimeException(e);
+                    }
+
+                    try {
+                        Gson gson = new Gson();
+                        JsonObject json = gson.fromJson(line, JsonObject.class);
+                        if (json.get("type").getAsString().equals("error")) {
+                            ValNarratorController.getLatestInstance().dispatchError(new XMPPError(json.get("reason").getAsString(), json.get("code").getAsInt()));
+                        } else {
+                            XMPPEvent event = new XMPPEvent(json.get("type").getAsString(), json.get("time").getAsLong(), json.get("data").getAsString());
+                            if (event.type().equals("incoming")) {
+                                final String xml = event.data();
+                                Pattern idPattern = Pattern.compile("id='(.*?)'");
+                                Matcher idMatcher = idPattern.matcher(xml.replace("\"", "'"));
+                                String id = idMatcher.find() ? idMatcher.group(1) : null;
+                                Pattern jidPattern = Pattern.compile("<jid>(.*?)</jid>");
+                                Matcher jidMatcher = jidPattern.matcher(xml);
+                                String jid = jidMatcher.find() ? jidMatcher.group(1).split("@")[0] : null;
+                                if (ChatDataHandler.getInstance().getProperties().getSelfID() == null && id != null && id.equals("_xmpp_bind1")) {
+                                    logger.debug(String.format("Set Self ID to %s", jid));
+                                    ChatDataHandler.getInstance().getProperties().setSelfID(jid);
+                                }
+                                ValNarratorController.getLatestInstance().dispatchEvent(event);
+                                if (!ValNarratorController.getLatestInstance().isLoading() && ChatDataHandler.getInstance().getProperties().getState()) {
+                                    continue;
+                                }
+
+                                if (xml.startsWith("<message")) {
+                                    Message msg = new Message(xml);
+                                    logger.info(String.format("Received message: %s", msg));
+                                    ChatDataHandler.getInstance().message(msg);
+                                }
                             } else {
-                                XMPPEvent event = new XMPPEvent(json.get("type").getAsString(), json.get("time").getAsLong(), json.get("data").getAsString());
-                                if (event.type().equals("incoming")) {
-                                    final String xml = event.data();
-                                    Pattern idPattern = Pattern.compile("id='(.*?)'");
-                                    Matcher idMatcher = idPattern.matcher(xml.replace("\"", "'"));
-                                    String id = idMatcher.find() ? idMatcher.group(1) : null;
-                                    Pattern jidPattern = Pattern.compile("<jid>(.*?)</jid>");
-                                    Matcher jidMatcher = jidPattern.matcher(xml);
-                                    String jid = jidMatcher.find() ? jidMatcher.group(1).split("@")[0] : null;
-                                    if (id != null && id.equals("_xmpp_bind1")) {
-                                        ChatDataHandler.getInstance().getProperties().setSelfID(jid);
-                                    }
-                                    for (Character ch : xml.toCharArray())
-                                        incomingBuffer.append(ch);
-                                    ValNarratorController.getLatestInstance().dispatchEvent(event);
+                                if (event.type().equals("close-riot") || event.type().equals("close-valorant")) {
+                                    ValNarratorApplication.showAlert("Warning", "Valorant or Riot client has been closed, application will close in 5 seconds.");
+                                    Thread.sleep(5000);
+                                    System.exit(0);
                                 }
                             }
-                        } catch (JsonSyntaxException | NullPointerException | InterruptedException |
-                                 ExecutionException | IOException ignored) {
+
                         }
+                    } catch (JsonSyntaxException | NullPointerException | InterruptedException | ExecutionException |
+                             IOException ignored) {
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
             }).start();
-            logger.info("Node started!");
         } catch (IOException e) {
+            logger.error("Running Xmpp-Node generated an error: ");
             e.printStackTrace();
         }
+        logger.info(String.format("Initialization completed in %d ms.", System.currentTimeMillis() - appStart));
+
         CompletableFuture.runAsync(() -> {
             while (isLoading) {
                 try {
@@ -236,17 +250,98 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 ValNarratorController.getLatestInstance().panelUser.setVisible(true);
             });
             ChatDataHandler.generateSingleton();
+            new VoiceTokenHandler(ChatDataHandler.getInstance().getAPIHandler()).startRefreshToken();
             VoiceGenerator.generateSingleton();
+            try {
+                if (VoiceGenerator.isSyncValorantSettingsEnabled())
+                    VoiceGenerator.getInstance().syncValorantPlayerSettings();
+            } catch (IOException | DataFormatException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+            Platform.runLater(() -> {
+                ArrayList<String> inbuiltVoiceNames = new ArrayList<>();
+                VoiceGenerator.getInbuiltVoices().forEach((n) -> inbuiltVoiceNames.add(String.format("%s, INBUILT", n)));
+                ValNarratorController.getLatestInstance().voices.getItems().addAll(inbuiltVoiceNames);
+            });
         });
     }
 
-    public void showValorantSettingsDemo() {
-        final Alert newAlert = new Alert(Alert.AlertType.INFORMATION);
-        newAlert.setHeaderText("Toggle the settings highlighted in red.");
-        newAlert.getDialogPane().setMinHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
-        ImageView imageView = new ImageView(System.getProperty("user.dir") + "//tutorial.png");
-        newAlert.setGraphic(imageView);
-        newAlert.show();
+    public void openDiscordInvite() {
+        try {
+            java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://valnarrator.tech/discord"));
+            logger.info("Opened discord invite link successfully!");
+        } catch (IOException e) {
+            logger.error("Could not open discord invite link!");
+            showAlert("Error!", "Failed to open discord invite link, please try again later.");
+        }
+    }
+
+    public void ignorePlayer() {
+        final String player = addIgnoredPlayer.getValue();
+        if (player != null && !player.isEmpty()) {
+            if (player.equals(lastAddIgnoredPlayerSelectionString)) {
+                return;
+            }
+            ChatDataHandler.getInstance().getProperties().addIgnoredPlayer(player);
+            removeIgnoredPlayer.getItems().addAll(player);
+            if (lastAddIgnoredPlayerSelectionString != null)
+                removeIgnoredPlayer.getItems().removeAll(lastAddIgnoredPlayerSelectionString);
+            logger.info(String.format("Added %s to ignored players.", player));
+        }
+        final String selectionString = "Add RiotId#RiotTag";
+        lastAddIgnoredPlayerSelectionString = selectionString;
+        addIgnoredPlayer.getItems().addAll(selectionString);
+        addIgnoredPlayer.getSelectionModel().select(selectionString);
+        final ArrayList<String> ignoredPlayerIDs = ChatDataHandler.getInstance().getProperties().getIgnoredPlayerIDs();
+        final List<String> ignoredPlayers = ignoredPlayerIDs.stream().map(ChatDataHandler.getInstance().getProperties().getPlayerIDTable()::get).collect(Collectors.toList());
+        final String selectionString1 = String.format("Ignored: %s", String.join(", ", ignoredPlayers));
+        lastRemovedIgnoredPlayerSelectionString = selectionString1;
+        removeIgnoredPlayer.getItems().addAll(selectionString1);
+        removeIgnoredPlayer.getSelectionModel().select(selectionString1);
+    }
+
+    public void unignorePlayer() {
+        final String player = removeIgnoredPlayer.getValue();
+        if (player != null && !player.isEmpty()) {
+            if (player.equals(lastRemovedIgnoredPlayerSelectionString)) {
+                return;
+            }
+            ChatDataHandler.getInstance().getProperties().removeIgnoredPlayer(player);
+            removeIgnoredPlayer.getItems().removeAll(ChatDataHandler.getInstance().getProperties().getPlayerNameTable().get(player));
+            if (lastRemovedIgnoredPlayerSelectionString != null)
+                removeIgnoredPlayer.getItems().removeAll(lastRemovedIgnoredPlayerSelectionString);
+            logger.info(String.format("Removed %s from ignored players.", player));
+        }
+        final ArrayList<String> ignoredPlayerIDs = ChatDataHandler.getInstance().getProperties().getIgnoredPlayerIDs();
+        final List<String> ignoredPlayers = ignoredPlayerIDs.stream().map(ChatDataHandler.getInstance().getProperties().getPlayerIDTable()::get).collect(Collectors.toList());
+        final String selectionString;
+        if (!ignoredPlayers.isEmpty()) {
+            selectionString = String.format("Ignored: %s", String.join(", ", ignoredPlayers));
+        } else {
+            selectionString = "View/Remove RiotID#RiotTag";
+        }
+        lastRemovedIgnoredPlayerSelectionString = selectionString;
+        removeIgnoredPlayer.getItems().addAll(selectionString);
+        removeIgnoredPlayer.getSelectionModel().select(selectionString);
+    }
+
+    public void syncValorantSettingsToggle() throws IOException {
+        if (VoiceGenerator.getInstance().syncValorantSettingsToggle()) {
+            Platform.runLater(() -> showInformation("Voice Settings SYNC", "Enabled, Valorant settings will be synced at next start-up!"));
+        } else {
+            Platform.runLater(() -> showInformation("Voice Settings SYNC", "Disabled, Valorant settings will not be synced at next start-up!"));
+        }
+    }
+
+    public void syncValorantSettings() {
+        try {
+            VoiceGenerator.getInstance().syncValorantPlayerSettings();
+            showInformation("Voice Settings SYNC", "Valorant settings synced successfully!");
+        } catch (IOException | DataFormatException | InterruptedException e) {
+            logger.error("Failed to sync valorant settings!");
+            showAlert("Error!", "Failed to sync valorant settings, please try again later.");
+        }
     }
 
     public void keybindChange(javafx.scene.input.KeyEvent event) throws IOException {
@@ -281,7 +376,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                     ValNarratorController.getLatestInstance().windowTitle.setVisible(false);
                     ValNarratorController.getLatestInstance().premiumWindowTitle.setVisible(true);
                     ValNarratorController.getLatestInstance().subscribeButton.setVisible(false);
-                    ValNarratorController.getLatestInstance().setPremiumDateLabel(String.format("Valid till %s", mq.premiumTill()));
+                    ValNarratorController.getLatestInstance().setPremiumDateLabel(String.format("Valid till %s", new SimpleDateFormat("dd/MM/yyyy").format(new Date(Long.parseLong(mq.premiumTill()) * 1000))));
                 });
             } else {
                 Platform.runLater(() -> {
@@ -294,10 +389,14 @@ public class ValNarratorController implements XMPPEventDispatcher {
     }
 
     public void browseSubscription() throws IOException, InterruptedException {
-        logger.info("Opening subscription page...");
         String subscriptionURL = ChatDataHandler.getInstance().getAPIHandler().getSubscriptionURL();
-        if (subscriptionURL != null) java.awt.Desktop.getDesktop().browse(java.net.URI.create(subscriptionURL));
-        else showAlert("Error!", "Failed to open subscription page, please try again later.");
+        if (subscriptionURL != null) {
+            java.awt.Desktop.getDesktop().browse(java.net.URI.create(subscriptionURL));
+            logger.info("Opened subscription page successfully!");
+        } else {
+            logger.error("Could not open subscription page!");
+            showAlert("Error!", "Failed to open subscription page, please try again later.");
+        }
     }
 
     public void setMessagesSent(long number) {
@@ -306,10 +405,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void setCharactersNarrated(long number) {
         charactersNarratedLabel.setText(Long.toString(number));
-    }
-
-    public void setAccountLabel(String accountName) {
-        accountLabel.setText(accountName);
     }
 
     public void setPremiumDateLabel(String date) {
@@ -376,7 +471,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
         }
     }
 
-    public void selectSource() {
+    public void selectSource() throws IOException {
         final String rawSource = sources.getValue();
         switch (rawSource) {
             case "SELF" -> {
@@ -450,28 +545,13 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 logger.info("Toggled Self, Party, Team and All Narration ON");
             }
         }
+        VoiceGenerator.getInstance().loadCurrentSource(rawSource);
+        VoiceGenerator.getInstance().saveConfig();
     }
 
     public void selectVoice() {
         final String rawVoiceId = voices.getValue();
-        boolean isValorant = rawVoiceId.contains("VALORANT");
-        final String voiceId = rawVoiceId.substring(0, rawVoiceId.indexOf(","));
-        if (isValorant) {
-            if (!ChatDataHandler.getInstance().isPremium()) {
-                revertVoiceSelection();
-                showAlert("Premium Required", "Valorant voices are available with premium, please subscribe to premium to continue using this voice! You can subscribe in the info tab.");
-                return;
-            }
-            previousSelection = rawVoiceId;
-            VoiceGenerator.setCurrentVoice(voiceId);
-            VoiceGenerator.setValorantVoice();
-            logger.info("(VALORANT)Set voice to: " + voiceId);
-        } else {
-            previousSelection = rawVoiceId;
-            VoiceGenerator.setCurrentVoice(voiceId);
-            VoiceGenerator.setNormalVoice();
-            logger.info("Set voice to: " + voiceId);
-        }
+        if (VoiceGenerator.setCurrentVoice(rawVoiceId)) previousSelection = rawVoiceId;
     }
 
     public void toggleTeamChat() throws IOException {
@@ -490,8 +570,8 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void toggleMic() {
         if (micButton.isSelected()) {
+            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
             try {
-                String fileLocation = "SoundVolumeView.exe";
                 String command = fileLocation + " /SetPlaybackThroughDevice \"DefaultCaptureDevice\" \"CABLE Input\"";
                 Runtime.getRuntime().exec(command);
                 command = fileLocation + " /SetListenToThisDevice \"DefaultCaptureDevice\" 1";
@@ -502,7 +582,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
         } else {
             try {
-                String fileLocation = "SoundVolumeView.exe";
+                String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
                 String command = fileLocation + " /SetPlaybackThroughDevice \"DefaultCaptureDevice\" \"CABLE Input\"";
                 Runtime.getRuntime().exec(command);
                 command = fileLocation + " /SetListenToThisDevice \"DefaultCaptureDevice\" 0";
@@ -515,7 +595,19 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     @Override
     public void dispatchError(XMPPError error) throws InterruptedException, ExecutionException, IOException {
-        logger.error(String.valueOf(error));
+        if (error.code() == 500) {
+            logger.error("Exiting due to an unknown error!");
+            Platform.runLater(() -> {
+                showAlertAndWait("", "An internal server error occurred, please try again later.");
+                System.exit(-1);
+            });
+        } else {
+            logger.error(String.format("Exiting due to %s", error.reason()));
+            Platform.runLater(() -> {
+                showAlertAndWait("", error.reason());
+                System.exit(-1);
+            });
+        }
     }
 
     @Override
@@ -527,90 +619,5 @@ public class ValNarratorController implements XMPPEventDispatcher {
             isLoading = false;
         }
     }
-
-}
-
-class IncomingBufferHandler extends XMLBuffer implements InputCallback {
-    @Override
-    public void onInput(String line) {
-        if (!ValNarratorController.getLatestInstance().isLoading() && ChatDataHandler.getInstance().getProperties().getState()) {
-            return;
-        }
-
-        if (line.startsWith("<message")) {
-            Message msg = new Message(line);
-            ChatDataHandler.getInstance().message(msg);
-        }
-    }
-
-    public void append(int character) {
-        if (bufferIndex == buffer.length) {
-            buffer = Arrays.copyOf(buffer, buffer.length * 2);
-        }
-        buffer[bufferIndex++] = (byte) character;
-
-        if (character == '>') check();
-    }
-
-    void check() {
-        String buffered = new String(buffer, 0, bufferIndex, StandardCharsets.UTF_8);
-        if (buffered.startsWith("</")) {
-            reset();
-        } else if (buffered.startsWith("<?")) {
-            if (breakpoint == null && buffered.endsWith("?>")) {
-                int first = buffered.indexOf('?');
-                int second = buffered.indexOf('?', first + 1);
-                breakpoint = buffered.substring(first, second).split(" ")[1] + ">";
-            }
-            if (breakpoint != null) {
-                if (buffered.endsWith(breakpoint)) {
-                    dispatch(buffered);
-                }
-            }
-        } else if (buffered.startsWith("<")) {
-            if (breakpoint == null && buffered.endsWith("/>")) {
-                breakpoint = "/>";
-            } else if (breakpoint == null && buffered.endsWith(">")) {
-                int spaceIndex = buffered.indexOf(' ');
-                if (spaceIndex == -1) {
-                    int first = buffered.indexOf('>');
-                    breakpoint = "</" + buffered.substring(1, first) + ">";
-                } else {
-                    breakpoint = "</" + buffered.substring(1, spaceIndex) + ">";
-                }
-            }
-            if (breakpoint != null) {
-                if (buffered.endsWith(breakpoint)) {
-                    dispatch(buffered);
-                }
-            }
-        }
-    }
-
-    void dispatch(String line) {
-        onInput(line);
-        reset();
-    }
-
-    void reset() {
-        this.bufferIndex = 0;
-        this.breakpoint = null;
-        this.buffer = new byte[1024];
-    }
-}
-
-
-abstract class XMLBuffer {
-    byte[] buffer = new byte[1024];
-    int bufferIndex = 0;
-    String breakpoint;
-
-    abstract void append(int character);
-
-    abstract void check();
-
-    abstract void dispatch(String line);
-
-    abstract void reset();
 
 }

@@ -20,21 +20,52 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 public class ValNarratorApplication extends Application {
     private static final Logger logger = LoggerFactory.getLogger(ValNarratorApplication.class);
     private boolean firstTime;
     private TrayIcon trayIcon;
 
+    public static void showInformation(String headerText, String contentText) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setHeaderText(headerText);
+        alert.setContentText(contentText);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        alert.show();
+    }
+
+    public static void showAlert(String headerText, String contentText) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setHeaderText(headerText);
+        alert.setContentText(contentText);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        Toolkit.getDefaultToolkit().beep();
+        alert.show();
+    }
+
+    public static void showAlertAndWait(String headerText, String contentText) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setHeaderText(headerText);
+        alert.setContentText(contentText);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        Toolkit.getDefaultToolkit().beep();
+        alert.showAndWait();
+    }
+
     @Override
     public void start(Stage stage) throws IOException, AWTException {
-        try (InputStream is = Objects.requireNonNull(ValNarratorApplication.class.getResource("startupTune.mp3")).openStream()) {
-            AdvancedPlayer player = new AdvancedPlayer(is);
-            player.play();
-        } catch (JavaLayerException e) {
-            throw new RuntimeException(e);
-        }
-
+        CompletableFuture.runAsync(() -> {
+            logger.debug("Trying to play start-up tune.");
+            long startTime = System.currentTimeMillis();
+            try (InputStream is = Objects.requireNonNull(ValNarratorApplication.class.getResource("startupTune.mp3")).openStream()) {
+                AdvancedPlayer player = new AdvancedPlayer(is);
+                player.play();
+                logger.debug(String.format("Finished playing tune in %d ms.", System.currentTimeMillis() - startTime));
+            } catch (JavaLayerException | IOException e) {
+                logger.error("Error while playing start-up tune.", e);
+            }
+        });
         FXMLLoader fxmlLoader = new FXMLLoader(ValNarratorApplication.class.getResource("mainApplication.fxml"));
         stage.initStyle(StageStyle.TRANSPARENT);
         stage.setTitle("Valorant Narrator");
@@ -69,8 +100,7 @@ public class ValNarratorApplication extends Application {
             trayIcon = new TrayIcon(Objects.requireNonNull(image), "Valorant Narrator", popup);
             trayIcon.addActionListener(showListener);
             tray.add(trayIcon);
-        }
-        else {
+        } else {
             logger.warn("System tray not supported!");
         }
     }
@@ -89,31 +119,6 @@ public class ValNarratorApplication extends Application {
                 showProgramIsMinimizedMsg();
             }
         });
-    }
-
-    public static void showInformation(String headerText, String contentText){
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setHeaderText(headerText);
-        alert.setContentText(contentText);
-        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
-        alert.show();
-    }
-    public static void showAlert(String headerText, String contentText){
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setHeaderText(headerText);
-        alert.setContentText(contentText);
-        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
-        Toolkit.getDefaultToolkit().beep();
-        alert.show();
-    }
-
-    public static void showAlertAndWait(String headerText, String contentText){
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setHeaderText(headerText);
-        alert.setContentText(contentText);
-        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
-        Toolkit.getDefaultToolkit().beep();
-        alert.showAndWait();
     }
 
 }

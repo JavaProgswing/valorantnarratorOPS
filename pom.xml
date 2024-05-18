@@ -6,7 +6,7 @@
 
     <groupId>com.jprcoder</groupId>
     <artifactId>ValorantNarrator</artifactId>
-    <version>2.9.0</version>
+    <version>3.0</version>
     <name>ValorantNarrator</name>
 
     <properties>
@@ -14,7 +14,6 @@
         <junit.version>5.9.2</junit.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>17</java.version>
         <javafx.version>17.0.1</javafx.version>
     </properties>
@@ -35,20 +34,17 @@
             <version>17.0.1</version>
         </dependency>
         <dependency>
-            <groupId>org.kordamp.ikonli</groupId>
-            <artifactId>ikonli-javafx</artifactId>
-            <version>12.3.1</version>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>polly</artifactId>
-            <version>2.23.17</version>
-        </dependency>
-        <dependency>
             <groupId>dev.mccue</groupId>
             <artifactId>jlayer</artifactId>
-            <version>0.0.4</version>
+            <version>2024.04.19</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-server -->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>12.0.8</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -65,12 +61,6 @@
             <artifactId>jfoenix</artifactId>
             <version>9.0.10</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.unbescape/unbescape -->
-        <dependency>
-            <groupId>org.unbescape</groupId>
-            <artifactId>unbescape</artifactId>
-            <version>1.1.6.RELEASE</version>
-        </dependency>
     </dependencies>
     <build>
         <resources>
@@ -80,23 +70,242 @@
             </resource>
         </resources>
         <plugins>
+            <!--create linked image-->
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.4</version>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
                 <executions>
                     <execution>
+                        <phase>package</phase>
                         <goals>
-                            <goal>shade</goal>
+                            <goal>jlink</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <mainClass>com.jprcoder.valnarratorgui.Main</mainClass>
+                    <compress>2</compress>
+                    <noManPages>true</noManPages>
+                    <noHeaderFiles>true</noHeaderFiles>
+                    <stripDebug>true</stripDebug>
+                    <launcher>${project.artifactId}</launcher>
+                </configuration>
+            </plugin>
+            <!--package image as an exe-->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>create-noconsole-vbs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.jprcoder.valnarratorgui.Main</mainClass>
-                                </transformer>
-                            </transformers>
+                            <executable>${project.basedir}\tools\create-noconsole-vbs.bat</executable>
+                            <arguments>
+                                <argument>${project.build.directory}\image\bin\launchValorantNarrator.vbs</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>rcedit-execution-1</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${project.basedir}\tools\rh.exe</executable>
+                            <arguments>
+                                <argument>-open</argument>
+                                <argument>${project.build.directory}\image\bin\java.exe</argument>
+
+                                <argument>-save</argument>
+                                <argument>${project.build.directory}\image\bin\java.exe</argument>
+
+                                <argument>-action</argument>
+                                <argument>addskip</argument>
+
+                                <argument>-res</argument>
+                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\app.ico</argument>
+
+                                <argument>-mask</argument>
+                                <argument>ICONGROUP,MAINICON,</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>java-edit-description</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${project.basedir}\tools\rcedit.exe</executable>
+                            <arguments>
+                                <argument>${project.build.directory}\image\bin\java.exe</argument>
+                                <argument>--set-version-string</argument>
+                                <argument>FileDescription</argument>
+                                <argument>Valorant Narrator</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>java-edit-productname</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${project.basedir}\tools\rcedit.exe</executable>
+                            <arguments>
+                                <argument>${project.build.directory}\image\bin\java.exe</argument>
+                                <argument>--set-version-string</argument>
+                                <argument>ProductName</argument>
+                                <argument>Valorant Narrator</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Execution block for warp-packer -->
+                    <execution>
+                        <id>warp-packer-execution</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <!-- warp-packer configuration -->
+                            <executable>${project.basedir}\tools\warp-packer.exe</executable>
+                            <arguments>
+                                <argument>--arch</argument>
+                                <argument>windows-x64</argument>
+
+                                <argument>--input_dir</argument>
+                                <argument>${project.build.directory}\image</argument>
+
+                                <argument>--exec</argument>
+                                <argument>bin\${project.artifactId}.bat</argument>
+
+                                <argument>--output</argument>
+                                <argument>${project.build.directory}\${project.artifactId}.exe</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>rcedit-execution</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${project.basedir}\tools\rh.exe</executable>
+                            <arguments>
+                                <argument>-open</argument>
+                                <argument>${project.build.directory}\${project.artifactId}.exe</argument>
+
+                                <argument>-save</argument>
+                                <argument>
+                                    C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\${project.artifactId}.exe
+                                </argument>
+
+                                <argument>-action</argument>
+                                <argument>addskip</argument>
+
+                                <argument>-res</argument>
+                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\app.ico</argument>
+
+                                <argument>-mask</argument>
+                                <argument>ICONGROUP,MAINICON,</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>delete-xmpp</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>cmd.exe</executable>
+                            <arguments>
+                                <argument>/k</argument>
+                                <argument>rmdir</argument>
+                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp</argument>
+                                <argument>/s</argument>
+                                <argument>/q</argument>
+                                <argument>&amp;&amp;</argument>
+                                <argument>exit</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-xmpp</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>cmd.exe</executable>
+                            <arguments>
+                                <argument>/k</argument>
+                                <argument>xcopy</argument>
+                                <argument>/f</argument>
+                                <argument>/s</argument>
+                                <argument>/y</argument>
+                                <argument>${project.basedir}\xmpp</argument>
+                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp\</argument>
+                                <argument>&amp;&amp;</argument>
+                                <argument>exit</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>install-xmpp</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>npm</executable>
+                            <workingDirectory>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp
+                            </workingDirectory>
+                            <arguments>
+                                <argument>install</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>build-xmpp</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>npm</executable>
+                            <workingDirectory>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp
+                            </workingDirectory>
+                            <arguments>
+                                <argument>run</argument>
+                                <argument>build</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>pkg-xmpp</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>pkg</executable>
+                            <workingDirectory>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp
+                            </workingDirectory>
+                            <arguments>
+                                <argument>.</argument>
+                            </arguments>
                         </configuration>
                     </execution>
                 </executions>
@@ -106,8 +315,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>17</source>
-                    <target>17</target>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -118,6 +327,7 @@
                     <nonFilteredFileExtensions>
                         <nonFilteredFileExtension>mp3</nonFilteredFileExtension>
                         <nonFilteredFileExtension>png</nonFilteredFileExtension>
+                        <nonFilteredFileExtension>exe</nonFilteredFileExtension>
                     </nonFilteredFileExtensions>
                 </configuration>
             </plugin>

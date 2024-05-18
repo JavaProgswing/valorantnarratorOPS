@@ -1,6 +1,7 @@
 import * as tls from 'node:tls'
 import {ConfigMITM} from './ConfigMITM'
 import * as fs from 'node:fs'
+import * as path from 'node:path'
 
 export class XmppMITM {
     private readonly _port: number
@@ -17,8 +18,8 @@ export class XmppMITM {
         return new Promise<void>(async (resolve) => {
             let cliHooked = false;
             tls.createServer({
-                key: await fs.promises.readFile('./certs/server.key'),
-                cert: await fs.promises.readFile('./certs/server.cert'),
+                key: await fs.promises.readFile(path.join(__dirname, 'certs/server.key')),
+                cert: await fs.promises.readFile(path.join(__dirname, 'certs/server.cert')),
                 rejectUnauthorized: false,
                 requestCert: false
             }, socket => {
@@ -27,7 +28,7 @@ export class XmppMITM {
                 if (mapping === undefined) {
                     console.log(JSON.stringify({
                         type: 'error',
-                        code: 404,
+                        code: 500,
                         reason: `Unknown host ${socket.localAddress}`
                     }) + '\n')
                     socket.destroy()

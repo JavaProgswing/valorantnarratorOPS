@@ -39,14 +39,13 @@ public class SerialGenerator {
     }
 
 
-    private static ArrayList<String> getDiskSerial() throws IOException {
-        ArrayList<String> diskSerial = new ArrayList<>();
+    private static String getDiskSerial() throws IOException {
         Runtime runtime = Runtime.getRuntime();
         Process process;
         try {
             process = runtime.exec(new String[]{"wmic", "diskdrive", "get", "serialnumber"});
         } catch (IOException ignored) {
-            return diskSerial;
+            return null;
         }
 
         OutputStream os = process.getOutputStream();
@@ -62,10 +61,10 @@ public class SerialGenerator {
             while (sc.hasNext()) {
                 String serial = sc.nextLine().trim().replace("\n", "");
                 if (serial.isEmpty()) continue;
-                diskSerial.add(serial);
+                return serial;
             }
         }
-        return diskSerial;
+        return null;
     }
 
 
@@ -113,10 +112,14 @@ public class SerialGenerator {
         try (is) {
             Scanner sc = new Scanner(is);
             while (sc.hasNext()) {
-                String next = sc.next();
-                if ("ProcessorId".equals(next)) {
-                    cpuSerial = sc.next().trim();
-                    break;
+                try {
+                    String next = sc.next();
+                    if ("ProcessorId".equals(next)) {
+                        cpuSerial = sc.next().trim();
+                        break;
+                    }
+                } catch (java.util.NoSuchElementException e) {
+                    return null;
                 }
             }
         }
@@ -126,7 +129,7 @@ public class SerialGenerator {
     public static String getSerialNumber() throws IOException {
         String cpuSerial = getCPUSerial();
         ArrayList<String> gpuSerial = getGPUSerial();
-        ArrayList<String> hddSerial = getDiskSerial();
+        String hddSerial = getDiskSerial();
         ArrayList<String> mBoardSerial = getMBoardSerial();
         return String.valueOf(Objects.hash(cpuSerial, gpuSerial, hddSerial, mBoardSerial));
     }

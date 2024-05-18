@@ -1,13 +1,43 @@
 package com.jprcoder.valnarratorbackend;
 
+import java.util.ArrayList;
+import java.util.Hashtable;
+
 public class Chat {
     private final int quotaLimit;
+    private final Hashtable<String, String> playerIDs = new Hashtable<>();
+    private final Hashtable<String, String> playerNames = new Hashtable<>();
+    private final ArrayList<String> ignoredPlayerIDs = new ArrayList<>();
     private long messagesSent, charactersSent;
     private boolean selfState = true, privateState, partyState, teamState, allState, isDisabled;
     private String selfID;
 
     public Chat(int quotaLimit) {
         this.quotaLimit = quotaLimit;
+    }
+
+    public ArrayList<String> getIgnoredPlayerIDs() {
+        return (ArrayList<String>) ignoredPlayerIDs.clone();
+    }
+
+    public void addIgnoredPlayer(final String player) {
+        ignoredPlayerIDs.add(playerNames.get(player));
+    }
+
+    public void removeIgnoredPlayer(final String player) {
+        ignoredPlayerIDs.remove(playerNames.get(player));
+    }
+
+    public boolean isIgnoredPlayerID(final String playerID) {
+        return ignoredPlayerIDs.contains(playerID);
+    }
+
+    public Hashtable<String, String> getPlayerIDTable() {
+        return playerIDs;
+    }
+
+    public Hashtable<String, String> getPlayerNameTable() {
+        return playerNames;
     }
 
     public int getQuotaLimit() {

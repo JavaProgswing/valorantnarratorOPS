@@ -16,7 +16,7 @@ export async function getRiotClientPath() {
             const lines = stdout.split('\r\n')
             for (const line of lines) {
                 if (line.startsWith('ERROR')) {
-                    return reject(new Error(line))
+                    return resolve(`Error:${line}`)
                 } else {
                     const match = installStringRegex.exec(line)
                     if (match !== null) {
@@ -24,6 +24,7 @@ export async function getRiotClientPath() {
                     }
                 }
             }
+            return resolve('Error:404')
         })
     })
 }

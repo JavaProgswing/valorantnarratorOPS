@@ -21,5 +21,21 @@ import {exec} from 'node:child_process'
     const xmppMitm = new XmppMITM(xmppPort, host, configMitm)
     await xmppMitm.start()
     const riotClientPath = await getRiotClientPath()
+    if (riotClientPath == 'Error:404') {
+        console.log(JSON.stringify({
+            type: 'error',
+            code: 404,
+            reason: 'Valorant Installation not found. Please install Valorant and try again.'
+        }) + '\n')
+        process.exit(1)
+    }
+    if (riotClientPath.startsWith('Error')) {
+        console.log(JSON.stringify({
+            type: 'error',
+            code: 500,
+            reason: riotClientPath
+        }) + '\n')
+        process.exit(1)
+    }
     exec(`"${riotClientPath}" --client-config-url="http://${host}:${httpPort}" --launch-product=valorant --launch-patchline=live`)
 })()

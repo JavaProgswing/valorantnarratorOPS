@@ -1,8 +1,9 @@
 {
-  "name": "valorant-xmpp-logger",
+  "name": "valorantNarrator-xmpp",
   "version": "1.1.0",
-  "description": "A simple tool to log XMPP traffic between the Riot client and the Riot XMPP server",
+  "description": "A simple tool to intercept XMPP traffic between the Riot client and the Riot XMPP server",
   "main": "dist/main.js",
+  "bin": "dist/main.js",
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -21,6 +22,17 @@
   "devDependencies": {
     "@types/node": "^18.11.18",
     "typescript": "^4.9.4",
-    "undici": "^5.28.3"
+    "undici": "^5.16.0"
+  },
+  "dependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": "certs/*",
+    "outputPath": "C:\\Users\\yasha\\Documents\\ValorantNarrator\\ValorantNarrator",
+    "scripts": "dist/main.js",
+    "targets": [
+      "node18-win-x64"
+    ]
   }
 }
