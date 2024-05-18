@@ -119,6 +119,19 @@ public class ValNarratorController implements XMPPEventDispatcher {
         lastAnchorPane = panelUser;
         long start = System.currentTimeMillis(), appStart = System.currentTimeMillis();
         try {
+            String command = "taskkill /F /IM valorantNarrator-xmpp.exe";
+            ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            int code = process.waitFor();
+            if (code == 0) {
+                logger.info("Forcefully closed XMPP!");
+            }
+        } catch (Exception e) {
+            logger.error(String.format("Killing XMPP generated an error: %s", (Object) e.getStackTrace()));
+        }
+
+        try {
             String command = "taskkill /F /IM RiotClientServices.exe";
             ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
             processBuilder.redirectErrorStream(true);
@@ -144,7 +157,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
             logger.error(String.format("Killing Valorant generated an error: %s", (Object) e.getStackTrace()));
         }
 
-        logger.info(String.format("Closed riot-client, valorant in %d ms.", (System.currentTimeMillis() - start)));
+        logger.info(String.format("Closed XMPP, riot-client, valorant in %d ms.", (System.currentTimeMillis() - start)));
         try {
             String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
             long pid = ProcessHandle.current().pid();

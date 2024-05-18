@@ -36,3 +36,4 @@ build/
 /mvnw.cmd
 /mvnw
 /src/main/resources/com/jprcoder/valnarratorgui/config.properties
+/tools/rh.ini
