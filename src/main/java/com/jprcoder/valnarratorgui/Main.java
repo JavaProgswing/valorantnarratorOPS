@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 
 import static com.jprcoder.valnarratorbackend.APIHandler.*;
 import static com.jprcoder.valnarratorbackend.SerialGenerator.getSerialNumber;
@@ -99,7 +100,7 @@ public class Main {
         return true;
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         boolean debugEnabled = Arrays.asList(args).contains("-debug");
         String logbackConfigFile = "logback-console.xml";
         if (debugEnabled) {
@@ -127,8 +128,15 @@ public class Main {
         currentVersion = Double.parseDouble(fullVersioning.substring(0, fullVersioning.lastIndexOf('.')));
         boolean insMessage = Arrays.asList(args).contains("-showInstallationPrompt");
         if (insMessage && args.length == 1) {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                System.exit(0);
+            });
             JOptionPane.showMessageDialog(null, String.format("ValorantNarrator v-%1$,.2f has been installed successfully!", currentVersion), "Installation", JOptionPane.INFORMATION_MESSAGE);
-            return;
         }
 
         logger.info(String.format("Starting Valorant-Narrator on v-%1$,.2f", currentVersion));
