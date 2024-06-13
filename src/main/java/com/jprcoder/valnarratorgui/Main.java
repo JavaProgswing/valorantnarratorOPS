@@ -143,12 +143,41 @@ public class Main {
         logger.info(String.format("Build date: %s", properties.getProperty("buildTimestamp")));
 
         Files.createDirectories(Paths.get(CONFIG_DIR));
+        if (Arrays.asList(args).contains("win-launch") || Arrays.asList(args).contains("win-startup")) {
+            logger.info("Updater: Checking for updates!");
+            VersionInfo vi;
+            while (true) {
+                if (!isValorantRunning()) {
+                    try {
+                        vi = fetchVersionInfo();
+                        if (vi.version() > currentVersion) {
+                            logger.info(String.format("New Update v%f found, updating!", vi.version()));
+                            ValNarratorApplication.showInformation("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.");
+                            long start = System.currentTimeMillis();
+                            Toolkit.getDefaultToolkit().beep();
+                            downloadLatestVersion();
+
+                            logger.info(String.format("Updater finished in %d ms, exiting.", (System.currentTimeMillis() - start)));
+                            return;
+                        }
+                    } catch (JsonSyntaxException | InterruptedException e) {
+                        logger.error("CRITICAL: Could not find latest versioning info, trying again in a second!");
+                    }
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        lockInstance();
+        logger.info("Detected normal start-up, launching application!");
         RegistrationInfo ri;
         try {
             ri = fetchRegistrationInfo();
         } catch (com.google.gson.JsonSyntaxException | IOException e) {
-            logger.error("CRITICAL: API is down, exiting!");
-            JOptionPane.showMessageDialog(null, "Our service is unavailable, please try again later!", "API Down", JOptionPane.WARNING_MESSAGE);
+            logger.error("CRITICAL: API is down!");
             return;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -163,7 +192,7 @@ public class Main {
                 secretKey = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSign.bin").toString()).toCharArray();
                 secretSalt = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSalt.bin").toString()).toCharArray();
             } catch (FileNotFoundException e) {
-                logger.warn("CRITICAL: Could not find pre-existing files required for normal usage of app: secretSign.bin, secretSalt.bin. Exiting!");
+                logger.warn("CRITICAL: Could not find pre-existing files required for normal usage of app: secretSign.bin, secretSalt.bin");
                 encryptSignup(ri.signature(), ri.salt());
                 secretKey = ri.signature().toCharArray();
                 secretSalt = ri.salt().toCharArray();
@@ -172,42 +201,6 @@ public class Main {
                 throw new RuntimeException(e);
             }
         }
-        if (Arrays.asList(args).contains("win-launch") || Arrays.asList(args).contains("win-startup")) {
-            logger.info("Updater: Checking for updates!");
-            VersionInfo vi;
-            while (true) {
-                versionCheck:
-                {
-                    if (isValorantRunning())
-                        break;
-
-                    try {
-                        vi = fetchVersionInfo();
-                    } catch (JsonSyntaxException | InterruptedException e) {
-                        logger.error("CRITICAL: Could not find latest versioning info, trying again in a second!");
-                        break versionCheck;
-                    }
-                    if (vi.version() > currentVersion) {
-                        logger.info(String.format("New Update v%f found, updating!", vi.version()));
-                        ValNarratorApplication.showInformation("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.");
-                        long start = System.currentTimeMillis();
-                        Toolkit.getDefaultToolkit().beep();
-                        downloadLatestVersion();
-
-                        logger.info(String.format("Updater finished in %d ms, exiting.", (System.currentTimeMillis() - start)));
-                        return;
-                    }
-                }
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            return;
-        }
-        lockInstance();
-        logger.info("Detected normal start-up, launching application!");
         Application.launch(ValNarratorApplication.class, args);
     }
 

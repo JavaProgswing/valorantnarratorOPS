@@ -58,7 +58,7 @@ public class ValNarratorApplication extends Application {
         CompletableFuture.runAsync(() -> {
             logger.debug("Trying to play start-up tune.");
             long startTime = System.currentTimeMillis();
-            try (InputStream is = Objects.requireNonNull(ValNarratorApplication.class.getResource("startupTune.mp3")).openStream()) {
+            try (InputStream is = Objects.requireNonNull(ValNarratorApplication.class.getResourceAsStream("startupTune.mp3"))) {
                 AdvancedPlayer player = new AdvancedPlayer(is);
                 player.play();
                 logger.debug(String.format("Finished playing tune in %d ms.", System.currentTimeMillis() - startTime));

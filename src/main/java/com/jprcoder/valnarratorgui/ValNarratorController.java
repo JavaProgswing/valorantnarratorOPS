@@ -22,12 +22,10 @@ import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.zip.DataFormatException;
 
 import static com.jprcoder.valnarratorgui.ValNarratorApplication.*;
@@ -292,51 +290,24 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void ignorePlayer() {
         final String player = addIgnoredPlayer.getValue();
-        if (player != null && !player.isEmpty()) {
-            if (player.equals(lastAddIgnoredPlayerSelectionString)) {
-                return;
-            }
-            ChatDataHandler.getInstance().getProperties().addIgnoredPlayer(player);
-            removeIgnoredPlayer.getItems().addAll(player);
-            if (lastAddIgnoredPlayerSelectionString != null)
-                removeIgnoredPlayer.getItems().removeAll(lastAddIgnoredPlayerSelectionString);
-            logger.info(String.format("Added %s to ignored players.", player));
-        }
-        final String selectionString = "Add RiotId#RiotTag";
-        lastAddIgnoredPlayerSelectionString = selectionString;
-        addIgnoredPlayer.getItems().addAll(selectionString);
-        addIgnoredPlayer.getSelectionModel().select(selectionString);
-        final ArrayList<String> ignoredPlayerIDs = ChatDataHandler.getInstance().getProperties().getIgnoredPlayerIDs();
-        final List<String> ignoredPlayers = ignoredPlayerIDs.stream().map(ChatDataHandler.getInstance().getProperties().getPlayerIDTable()::get).collect(Collectors.toList());
-        final String selectionString1 = String.format("Ignored: %s", String.join(", ", ignoredPlayers));
-        lastRemovedIgnoredPlayerSelectionString = selectionString1;
-        removeIgnoredPlayer.getItems().addAll(selectionString1);
-        removeIgnoredPlayer.getSelectionModel().select(selectionString1);
+        if (player.equals("Add RiotId#RiotTag"))
+            return;
+        logger.info(String.format("Ignoring player %s", player));
+        ChatDataHandler.getInstance().getProperties().addIgnoredPlayer(player);
+        addIgnoredPlayer.getItems().remove(player);
+        removeIgnoredPlayer.getItems().add(player);
+        addIgnoredPlayer.getSelectionModel().select("Add RiotId#RiotTag");
     }
 
     public void unignorePlayer() {
         final String player = removeIgnoredPlayer.getValue();
-        if (player != null && !player.isEmpty()) {
-            if (player.equals(lastRemovedIgnoredPlayerSelectionString)) {
-                return;
-            }
-            ChatDataHandler.getInstance().getProperties().removeIgnoredPlayer(player);
-            removeIgnoredPlayer.getItems().removeAll(ChatDataHandler.getInstance().getProperties().getPlayerNameTable().get(player));
-            if (lastRemovedIgnoredPlayerSelectionString != null)
-                removeIgnoredPlayer.getItems().removeAll(lastRemovedIgnoredPlayerSelectionString);
-            logger.info(String.format("Removed %s from ignored players.", player));
-        }
-        final ArrayList<String> ignoredPlayerIDs = ChatDataHandler.getInstance().getProperties().getIgnoredPlayerIDs();
-        final List<String> ignoredPlayers = ignoredPlayerIDs.stream().map(ChatDataHandler.getInstance().getProperties().getPlayerIDTable()::get).collect(Collectors.toList());
-        final String selectionString;
-        if (!ignoredPlayers.isEmpty()) {
-            selectionString = String.format("Ignored: %s", String.join(", ", ignoredPlayers));
-        } else {
-            selectionString = "View/Remove RiotID#RiotTag";
-        }
-        lastRemovedIgnoredPlayerSelectionString = selectionString;
-        removeIgnoredPlayer.getItems().addAll(selectionString);
-        removeIgnoredPlayer.getSelectionModel().select(selectionString);
+        if (player.equals("View/Remove RiotID#RiotTag"))
+            return;
+        logger.info(String.format("Unignoring player %s", player));
+        ChatDataHandler.getInstance().getProperties().removeIgnoredPlayer(player);
+        removeIgnoredPlayer.getItems().remove(player);
+        addIgnoredPlayer.getItems().add(player);
+        removeIgnoredPlayer.getSelectionModel().select("View/Remove RiotID#RiotTag");
     }
 
     public void syncValorantSettingsToggle() throws IOException {

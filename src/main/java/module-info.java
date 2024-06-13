@@ -13,7 +13,6 @@ module ValorantNarrator {
     requires org.slf4j;
     requires java.naming; // Missing logback dependency
     requires jdk.crypto.ec; // For SSL HttpClient before Java version 22
-    requires org.eclipse.jetty.server; // For Jetty server/HTTP proxy for riot
     exports com.jprcoder.valnarratorgui to javafx.graphics, javafx.fxml;
     opens com.jprcoder.valnarratorgui to javafx.fxml;
     opens com.jprcoder.valnarratorbackend to com.google.gson;

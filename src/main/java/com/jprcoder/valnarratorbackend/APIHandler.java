@@ -125,13 +125,13 @@ public class APIHandler {
                 reqBuilder.header(entry.getKey(), entry.getValue());
             }
             HttpResponse<InputStream> response = connectionHandler.getClient().send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+            logger.debug(String.valueOf(response));
             if (response.statusCode() == 403) {
                 logger.warn(String.format("Last refresh occurred %d ms ago, token has expired. Refreshing!", (System.currentTimeMillis() - VoiceTokenHandler.getLAST_REFRESH_MS())));
                 addRequestQuota();
                 final String id1 = System.getProperty("aws.accessKeyId"), key1 = System.getProperty("aws.secretKey"), sessionToken1 = System.getProperty("aws.sessionToken");
                 return speakVoice(text, currentVoice, engineType, id1, key1, sessionToken1);
             }
-            logger.debug(String.valueOf(response));
             logger.debug(String.valueOf(response.headers()));
             return new AbstractMap.SimpleEntry<>(response, response.body());
         } catch (NoSuchAlgorithmException | InterruptedException | InvalidKeyException | IOException e) {
@@ -337,7 +337,7 @@ public class APIHandler {
     }
 
     public String getSubscriptionURL() throws IOException, InterruptedException {
-        String jsonPayload = String.format("{\n" + "  \"plan_id\": \"%s\",\n" + "  \"quantity\": \"1\",\n" + "  \"custom_id\": \"" + serialNumber + "\",\n" + "   \"application_context\": {\n" + "     \"shipping_preference\": \"NO_SHIPPING\",\n" + "     \"return_url\": \"%s/payment_return\",\n" + "     \"cancel_url\": \"%s/payment_cancel\"\n" + "   }\n" + "}", getProperties().getProperty("paymentPlanID"), getProperties().getProperty("paymentLink"), getProperties().getProperty("paymentLink"));
+        String jsonPayload = String.format("{\"plan_id\": \"%s\",\n\"quantity\": \"1\",\n\"custom_id\": \"%s\",\n\"application_context\": {\n\"shipping_preference\": \"NO_SHIPPING\",\n\"return_url\": \"%s/payment_return\",\n\"cancel_url\": \"%s/payment_cancel\"\n}\n}", getProperties().getProperty("paymentPlanID"), serialNumber, getProperties().getProperty("paymentLink"), getProperties().getProperty("paymentLink"));
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(getProperties().getProperty("paymentLink"))).POST(HttpRequest.BodyPublishers.ofString(jsonPayload)).setHeader("content-type", "application/json").build();
 
         HttpResponse<String> response = connectionHandler.getClient().send(request, HttpResponse.BodyHandlers.ofString());

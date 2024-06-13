@@ -60,6 +60,7 @@
                     <String fx:value="Breach, VALORANT"/>
                     <String fx:value="Brimstone, VALORANT"/>
                     <String fx:value="Chamber, VALORANT"/>
+                    <String fx:value="Clove, VALORANT"/>
                     <String fx:value="Cypher, VALORANT"/>
                     <String fx:value="Deadlock, VALORANT"/>
                     <String fx:value="Fade, VALORANT"/>
@@ -321,6 +322,7 @@
                   style="-fx-border-color: white; -fx-background-radius: 5em;" stylesheets="@comboBoxStyle.css">
             <items>
                 <FXCollections fx:factory="observableArrayList">
+                    <String fx:value="Add RiotId#RiotTag"/>
                 </FXCollections>
             </items>
         </ComboBox>
@@ -329,6 +331,7 @@
                   style="-fx-border-color: white; -fx-background-radius: 5em;" stylesheets="@comboBoxStyle.css">
             <items>
                 <FXCollections fx:factory="observableArrayList">
+                    <String fx:value="View/Remove RiotID#RiotTag"/>
                 </FXCollections>
             </items>
         </ComboBox>

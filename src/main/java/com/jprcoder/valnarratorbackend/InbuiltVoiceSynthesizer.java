@@ -53,7 +53,6 @@ public class InbuiltVoiceSynthesizer {
                     "Add-Type -AssemblyName System.Speech;$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;$speak.SelectVoice('%s');$speak.Rate=0;$speak.Speak('%s');",
                     voice, text
             );
-            System.out.println(command);
             powershellWriter.println(command);
         } catch (Exception e) {
             e.printStackTrace();
