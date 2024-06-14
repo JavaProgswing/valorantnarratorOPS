@@ -125,7 +125,7 @@ public class Main {
             throw new RuntimeException(e);
         }
         String fullVersioning = properties.getProperty("version");
-        currentVersion = Double.parseDouble(fullVersioning.substring(0, fullVersioning.lastIndexOf('.')));
+        currentVersion = Double.parseDouble(fullVersioning);
         boolean insMessage = Arrays.asList(args).contains("-showInstallationPrompt");
         if (insMessage && args.length == 1) {
             CompletableFuture.runAsync(() -> {
