@@ -66,11 +66,10 @@ public class Chat {
     }
 
     public boolean toggleState() {
-        isDisabled = !isDisabled;
-        return isDisabled;
+        return isDisabled = !isDisabled;
     }
 
-    public boolean getState() {
+    public boolean isDisabled() {
         return isDisabled;
     }
 

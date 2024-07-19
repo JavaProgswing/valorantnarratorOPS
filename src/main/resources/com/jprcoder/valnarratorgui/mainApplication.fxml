@@ -8,32 +8,33 @@
 <?import javafx.scene.paint.*?>
 <?import javafx.scene.text.*?>
 <?import java.lang.*?>
-<AnchorPane xmlns:fx="http://javafx.com/fxml/1" style="-fx-background-color: transparent;"
-            xmlns="http://javafx.com/javafx/21" fx:controller="com.jprcoder.valnarratorgui.ValNarratorController">
+<AnchorPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="614.0" prefWidth="377.0"
+            style="-fx-background-color: transparent;" xmlns="http://javafx.com/javafx/21"
+            fx:controller="com.jprcoder.valnarratorgui.ValNarratorController">
     <AnchorPane fx:id="topBar" prefHeight="55.0" prefWidth="377.0" style="-fx-background-color: #1C2C3C;">
         <ImageView fx:id="btnUser" fitHeight="38.0" fitWidth="32.0" layoutX="124.0" layoutY="13.0"
-                   onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">
+                   onMouseClicked="#handleButtonAction" opacity="0.4" pickOnBounds="true" preserveRatio="true">
             <Image url="@user.png"/>
         </ImageView>
         <ImageView fx:id="btnInfo" fitHeight="34.0" fitWidth="32.0" layoutX="219.0" layoutY="13.0"
-                   onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">
+                   onMouseClicked="#handleButtonAction" opacity="0.4" pickOnBounds="true" preserveRatio="true">
             <Image url="@info.png"/>
         </ImageView>
         <ImageView fx:id="btnPower" fitHeight="28.0" fitWidth="32.0" layoutX="37.0" layoutY="15.0"
-                   onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">
+                   onMouseClicked="#handleButtonAction" opacity="0.4" pickOnBounds="true" preserveRatio="true">
             <Image url="@power.png"/>
         </ImageView>
         <ImageView fx:id="btnSettings" fitHeight="32.0" fitWidth="53.0" layoutX="314.0" layoutY="13.0"
-                   onMouseClicked="#handleButtonAction" pickOnBounds="true" preserveRatio="true">
+                   onMouseClicked="#handleButtonAction" opacity="0.4" pickOnBounds="true" preserveRatio="true">
             <Image url="@setting.png"/>
         </ImageView>
         <Separator layoutX="276.0" orientation="VERTICAL" prefHeight="57.0" prefWidth="7.0"/>
         <Separator layoutX="185.0" orientation="VERTICAL" prefHeight="57.0" prefWidth="7.0"/>
         <Separator layoutX="92.0" orientation="VERTICAL" prefHeight="57.0" prefWidth="7.0"/>
     </AnchorPane>
-    <AnchorPane fx:id="panelUser" layoutY="73.0" prefHeight="355.0" prefWidth="377.0"
+    <AnchorPane fx:id="panelUser" layoutY="73.0" prefHeight="415.0" prefWidth="377.0"
                 style="-fx-background-color: transparent;" visible="false">
-        <ImageView fitHeight="357.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
+        <ImageView fitHeight="444.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
             <Image url="@appBackgroundBLUR.png"/>
         </ImageView>
         <Label layoutX="25.0" layoutY="58.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR VOICE" textFill="WHITE">
@@ -41,8 +42,8 @@
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Label>
-        <ComboBox id="voices" fx:id="voices" layoutX="187.0" layoutY="69.0" onAction="#selectVoice"
-                  onHidden="#hideVoices" onShown="#showVoices" prefHeight="28.0" prefWidth="133.0"
+        <ComboBox id="voices" fx:id="voices" layoutX="160.0" layoutY="71.0" onAction="#selectVoice"
+                  onHidden="#hideVoices" onShown="#showVoices" prefHeight="28.0" prefWidth="180.0"
                   promptText="Matthew, male"
                   style="-fx-border-color: white; -fx-background-radius: 5em; -fx-border-radius: 5em;"
                   stylesheets="@comboBoxStyle.css">
@@ -82,54 +83,54 @@
                 </FXCollections>
             </items>
         </ComboBox>
-        <Label layoutX="25.0" layoutY="83.0" prefHeight="34.0" prefWidth="107.0"
+        <Label layoutX="25.0" layoutY="81.0" prefHeight="32.0" prefWidth="107.0"
                text="Change speaker voice for text narration." textFill="#f2efef" wrapText="true">
             <font>
                 <Font size="9.0"/>
             </font>
         </Label>
 
-        <Label layoutX="20.0" layoutY="270.0" prefHeight="25.0" prefWidth="117.0" text="REMAINING QUOTA"
+        <Label layoutX="20.0" layoutY="360.0" prefHeight="25.0" prefWidth="117.0" text="REMAINING QUOTA"
                textFill="WHITE">
             <font>
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Label>
-        <Label layoutX="20.0" layoutY="296.0" prefHeight="28.0" prefWidth="101.0"
+        <Label layoutX="20.0" layoutY="384.0" prefHeight="28.0" prefWidth="101.0"
                text="Remaining messages for today's quota." textFill="#f2efef" wrapText="true">
             <font>
                 <Font size="9.0"/>
             </font>
         </Label>
-        <Separator layoutX="24.0" layoutY="120.0" prefHeight="19.0" prefWidth="335.0"/>
-        <Separator layoutX="24.0" layoutY="251.0" prefHeight="19.0" prefWidth="335.0"/>
-        <ProgressBar fx:id="quotaBar" layoutX="176.0" layoutY="286.0" prefHeight="19.0" prefWidth="163.0" progress="1.0"
+        <Separator layoutX="19.0" layoutY="201.0" prefHeight="19.0" prefWidth="346.0"/>
+        <Separator layoutX="21.0" layoutY="332.0" prefHeight="19.0" prefWidth="346.0"/>
+        <ProgressBar fx:id="quotaBar" layoutX="160.0" layoutY="374.0" prefHeight="19.0" prefWidth="180.0" progress="1.0"
                      style="-fx-background-radius: 5em; -fx-border-radius: 5em;"/>
-        <Label layoutX="25.0" layoutY="151.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR STATS"
+        <Label layoutX="25.0" layoutY="232.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR STATS"
                textFill="WHITE">
             <font>
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Label>
-        <Label layoutX="25.0" layoutY="177.0" prefHeight="34.0" prefWidth="107.0" text="Messages sent today:"
+        <Label layoutX="25.0" layoutY="258.0" prefHeight="34.0" prefWidth="107.0" text="Messages sent today:"
                textFill="WHITE" wrapText="true">
             <font>
                 <Font size="10.0"/>
             </font>
         </Label>
-        <Label layoutX="25.0" layoutY="211.0" prefHeight="34.0" prefWidth="117.0" text="Characters narrated today:"
+        <Label layoutX="25.0" layoutY="292.0" prefHeight="34.0" prefWidth="117.0" text="Characters narrated today:"
                textFill="WHITE" wrapText="true">
             <font>
                 <Font size="10.0"/>
             </font>
         </Label>
-        <Label fx:id="messagesSentLabel" layoutX="186.0" layoutY="177.0" prefHeight="34.0" prefWidth="107.0" text="0"
+        <Label fx:id="messagesSentLabel" layoutX="187.0" layoutY="258.0" prefHeight="34.0" prefWidth="107.0" text="0"
                textAlignment="RIGHT" textFill="WHITE" wrapText="true">
             <font>
                 <Font name="System Bold" size="11.0"/>
             </font>
         </Label>
-        <Label fx:id="charactersNarratedLabel" layoutX="186.0" layoutY="211.0" prefHeight="34.0" prefWidth="107.0"
+        <Label fx:id="charactersNarratedLabel" layoutX="188.0" layoutY="292.0" prefHeight="34.0" prefWidth="107.0"
                text="0" textAlignment="RIGHT" textFill="WHITE" wrapText="true">
             <font>
                 <Font name="System Bold" size="11.0"/>
@@ -190,6 +191,20 @@
                 </LinearGradient>
             </textFill>
         </Label>
+        <Label layoutX="25.0" layoutY="128.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR RATE" textFill="WHITE">
+            <font>
+                <Font name="System Bold" size="12.0"/>
+            </font>
+        </Label>
+        <Label layoutX="28.0" layoutY="153.0" prefHeight="28.0" prefWidth="101.0"
+               text="Change speaker voice rate for text narration." textFill="#f2efef" wrapText="true">
+            <font>
+                <Font size="9.0"/>
+            </font>
+        </Label>
+        <Slider fx:id="rateSlider" layoutX="152.0" layoutY="141.0" max="200.0" prefHeight="38.0" prefWidth="195.0"
+                showTickLabels="true" showTickMarks="true" snapToTicks="true" stylesheets="@sliderStyle.css"
+                value="100.0"/>
 
     </AnchorPane>
     <AnchorPane fx:id="panelSettings" layoutY="72.0" prefHeight="531.0" prefWidth="370.0"
@@ -305,19 +320,19 @@
                 <Font size="14.0"/>
             </font>
         </Button>
-        <Label layoutX="25.0" layoutY="370.0" prefHeight="13.0" prefWidth="163.0" text="IGNORE PLAYER MESSAGES"
+        <Label layoutX="25.0" layoutY="363.0" prefHeight="13.0" prefWidth="163.0" text="IGNORE PLAYER MESSAGES"
                textFill="WHITE">
             <font>
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Label>
-        <Label layoutX="25.0" layoutY="388.0" prefHeight="28.0" prefWidth="133.0"
+        <Label layoutX="25.0" layoutY="379.0" prefHeight="28.0" prefWidth="133.0"
                text="Select Individual players to ignore messages from." textFill="#f2efef" wrapText="true">
             <font>
                 <Font size="9.0"/>
             </font>
         </Label>
-        <ComboBox fx:id="addIgnoredPlayer" layoutX="196.0" layoutY="379.0" onAction="#ignorePlayer" prefHeight="28.0"
+        <ComboBox fx:id="addIgnoredPlayer" layoutX="196.0" layoutY="366.0" onAction="#ignorePlayer" prefHeight="28.0"
                   prefWidth="155.0" promptText="Add RiotId#RiotTag"
                   style="-fx-border-color: white; -fx-background-radius: 5em;" stylesheets="@comboBoxStyle.css">
             <items>
@@ -326,8 +341,8 @@
                 </FXCollections>
             </items>
         </ComboBox>
-        <ComboBox fx:id="removeIgnoredPlayer" layoutX="22.0" layoutY="431.0" onAction="#unignorePlayer"
-                  prefHeight="28.0" prefWidth="346.0" promptText="View/Remove RiotID#RiotTag"
+        <ComboBox fx:id="removeIgnoredPlayer" layoutX="22.0" layoutY="424.0" onAction="#unignorePlayer"
+                  prefHeight="28.0" prefWidth="334.0" promptText="View/Remove RiotID#RiotTag"
                   style="-fx-border-color: white; -fx-background-radius: 5em;" stylesheets="@comboBoxStyle.css">
             <items>
                 <FXCollections fx:factory="observableArrayList">
@@ -342,49 +357,49 @@
             </image>
         </ImageView>
     </AnchorPane>
-    <AnchorPane fx:id="panelInfo" layoutY="82.0" prefHeight="527.0" prefWidth="377.0"
+    <AnchorPane fx:id="panelInfo" layoutY="82.0" prefHeight="377.0" prefWidth="377.0"
                 style="-fx-background-color: transparent;" visible="false">
-        <ImageView fitHeight="365.0" fitWidth="377.0" layoutY="-3.0" pickOnBounds="true">
+        <ImageView fitHeight="414.0" fitWidth="377.0" layoutY="-3.0" pickOnBounds="true">
             <Image url="@appBackgroundBLUR.png"/>
         </ImageView>
         <ImageView fitHeight="102.0" fitWidth="93.0" layoutX="142.0" layoutY="13.0" pickOnBounds="true"
                    preserveRatio="true">
             <Image url="@userBIG.png"/>
         </ImageView>
-        <Label layoutX="25.0" layoutY="150.0" prefHeight="25.0" prefWidth="117.0" text="User ID:" textFill="WHITE">
+        <Label layoutX="25.0" layoutY="168.0" prefHeight="25.0" prefWidth="117.0" text="User ID:" textFill="WHITE">
             <font>
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Label>
-        <Label fx:id="userIDLabel" layoutX="142.0" layoutY="146.0" prefHeight="34.0" prefWidth="117.0" text="0000"
+        <Label fx:id="userIDLabel" layoutX="142.0" layoutY="164.0" prefHeight="34.0" prefWidth="117.0" text="0000"
                textFill="#f2efef" wrapText="true">
             <font>
                 <Font name="System Bold" size="9.0"/>
             </font>
         </Label>
-        <Label layoutX="25.0" layoutY="180.0" prefHeight="25.0" prefWidth="117.0" text="Quota left:" textFill="WHITE">
+        <Label layoutX="25.0" layoutY="204.0" prefHeight="25.0" prefWidth="117.0" text="Quota left:" textFill="WHITE">
             <font>
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Label>
-        <Label fx:id="quotaLabel" layoutX="142.0" layoutY="176.0" prefHeight="34.0" prefWidth="117.0" text="0000"
+        <Label fx:id="quotaLabel" layoutX="142.0" layoutY="200.0" prefHeight="34.0" prefWidth="117.0" text="0000"
                textFill="#f2efef" wrapText="true">
             <font>
                 <Font name="System Bold" size="9.0"/>
             </font>
         </Label>
-        <Label layoutX="25.0" layoutY="210.0" prefHeight="25.0" prefWidth="117.0" text="Premium:" textFill="WHITE">
+        <Label layoutX="25.0" layoutY="238.0" prefHeight="25.0" prefWidth="117.0" text="Premium:" textFill="WHITE">
             <font>
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Label>
-        <Label fx:id="premiumDateLabel" layoutX="142.0" layoutY="206.0" prefHeight="34.0" prefWidth="117.0"
+        <Label fx:id="premiumDateLabel" layoutX="142.0" layoutY="234.0" prefHeight="34.0" prefWidth="117.0"
                text="Vaild till DD-MM-YYYY" textFill="#f2efef" wrapText="true">
             <font>
                 <Font name="System Bold" size="9.0"/>
             </font>
         </Label>
-        <Button fx:id="subscribeButton" defaultButton="true" layoutX="30.0" layoutY="246.0" mnemonicParsing="false"
+        <Button fx:id="subscribeButton" defaultButton="true" layoutX="27.0" layoutY="286.0" mnemonicParsing="false"
                 onAction="#browseSubscription" prefHeight="42.0" prefWidth="324.0"
                 style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
                 text="Get Premium" textAlignment="CENTER">
@@ -419,7 +434,7 @@
                 </LinearGradient>
             </textFill>
         </Button>
-        <Button defaultButton="true" layoutX="223.0" layoutY="310.0" mnemonicParsing="false"
+        <Button defaultButton="true" layoutX="223.0" layoutY="360.0" mnemonicParsing="false"
                 onAction="#openDiscordInvite" prefHeight="32.0" prefWidth="140.0"
                 style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
                 text="Join us on discord!" textAlignment="CENTER" textFill="WHITE">
@@ -427,7 +442,7 @@
                 <Font size="14.0"/>
             </font>
         </Button>
-        <Label layoutX="14.0" layoutY="305.0" prefHeight="42.0" prefWidth="209.0"
+        <Label layoutX="14.0" layoutY="355.0" prefHeight="42.0" prefWidth="209.0"
                text="Did something unexpected happen? Don't worry. Join us on our discord server." textFill="#f2efef"
                wrapText="true">
             <font>

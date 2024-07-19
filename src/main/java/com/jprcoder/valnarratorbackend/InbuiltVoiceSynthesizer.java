@@ -46,13 +46,12 @@ public class InbuiltVoiceSynthesizer {
         return voices;
     }
 
-    public void speakInbuiltVoice(String voice, String text) {
+    public void speakInbuiltVoice(String voice, String text, short rate) {
+        rate = (short) (rate / 10.0 - 10);
+
         try {
             // Send the command to speak with the specified voice
-            String command = String.format(
-                    "Add-Type -AssemblyName System.Speech;$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;$speak.SelectVoice('%s');$speak.Rate=0;$speak.Speak('%s');",
-                    voice, text
-            );
+            String command = String.format("Add-Type -AssemblyName System.Speech;$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;$speak.SelectVoice('%s');$speak.Rate=%d;$speak.Speak('%s');", voice, rate, text);
             powershellWriter.println(command);
         } catch (Exception e) {
             e.printStackTrace();

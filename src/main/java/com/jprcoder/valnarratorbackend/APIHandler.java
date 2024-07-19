@@ -45,10 +45,26 @@ public class APIHandler {
         this.connectionHandler = connectionHandler;
     }
 
-    public static VersionInfo fetchVersionInfo() throws IOException, InterruptedException {
+    public static <T> HttpResponse<T> retryUntilSuccess(HttpClient client, HttpRequest request, HttpResponse.BodyHandler<T> handler) {
+        while (true) {
+            try {
+                return client.send(request, handler);
+            } catch (IOException | InterruptedException e) {
+                logger.warn("{} failed, retrying... {}", request, e.getMessage());
+
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    public static VersionInfo fetchVersionInfo() throws InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/version/latest/info")).build();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = retryUntilSuccess(client, request, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
         logger.debug(String.valueOf(responseBody));
@@ -59,7 +75,7 @@ public class APIHandler {
         HttpClient client = HttpClient.newHttpClient();
         Signature sign = SignatureValidator.generateRegistrationSignature(serialNumber);
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/register?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = retryUntilSuccess(client, request, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
         logger.debug(String.valueOf(responseBody));
@@ -75,13 +91,25 @@ public class APIHandler {
     public static void downloadLatestVersion() throws IOException {
         final String installerLocation = Paths.get(System.getenv("Temp"), "ValorantNarrator").toString();
         URL url;
-        URLConnection con;
+        URLConnection con = null;
         DataInputStream dis;
         FileOutputStream fos;
         byte[] fileData;
         try {
             url = new URL(valAPIUrl + "/installer/version/latest");
-            con = url.openConnection();
+            while (con == null) {
+                try {
+                    con = url.openConnection();
+                } catch (IOException e) {
+                    logger.warn("/downloadLatestVersion failed, retrying... {}", e.getMessage());
+                }
+
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             dis = new DataInputStream(con.getInputStream());
             fileData = new byte[con.getContentLength()];
             for (int q = 0; q < fileData.length; q++) {
@@ -98,8 +126,8 @@ public class APIHandler {
         Runtime.getRuntime().exec(String.format("cmd.exe /K \"cd %s && %s /silent\"", installerLocation, installerName));
     }
 
-    public AbstractMap.Entry<HttpResponse<InputStream>, InputStream> speakVoice(String text, String currentVoice, VoiceEngineType engineType, String accessKeyID, String secretKey, String sessionToken) throws QuotaExhaustedException {
-        String requestBody = String.format("{\"Engine\":\"%s\",\"OutputFormat\":\"mp3\",\"Text\":\"%s\",\"VoiceId\":\"%s\"}", engineType.toValue(), text, currentVoice);
+    public AbstractMap.Entry<HttpResponse<InputStream>, InputStream> speakVoice(String text, short rate, String currentVoice, VoiceEngineType engineType, String accessKeyID, String secretKey, String sessionToken) throws QuotaExhaustedException {
+        String requestBody = String.format("{\"Engine\":\"%s\",\"OutputFormat\":\"mp3\",\"Text\":\"<speak><prosody rate='%d%%'>%s</prosody></speak>\",\"VoiceId\":\"%s\",\"TextType\":\"ssml\"}", engineType.toValue(), rate, text, currentVoice);
         TreeMap<String, String> preheaders = new TreeMap<>();
         try {
             preheaders.put("x-amz-content-sha256", hash(requestBody));
@@ -124,87 +152,75 @@ public class APIHandler {
             for (Map.Entry<String, String> entry : headers.entrySet()) {
                 reqBuilder.header(entry.getKey(), entry.getValue());
             }
-            HttpResponse<InputStream> response = connectionHandler.getClient().send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response = retryUntilSuccess(connectionHandler.getClient(), reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
             logger.debug(String.valueOf(response));
             if (response.statusCode() == 403) {
                 logger.warn(String.format("Last refresh occurred %d ms ago, token has expired. Refreshing!", (System.currentTimeMillis() - VoiceTokenHandler.getLAST_REFRESH_MS())));
                 addRequestQuota();
                 final String id1 = System.getProperty("aws.accessKeyId"), key1 = System.getProperty("aws.secretKey"), sessionToken1 = System.getProperty("aws.sessionToken");
-                return speakVoice(text, currentVoice, engineType, id1, key1, sessionToken1);
+                return speakVoice(text, rate, currentVoice, engineType, id1, key1, sessionToken1);
             }
             logger.debug(String.valueOf(response.headers()));
             return new AbstractMap.SimpleEntry<>(response, response.body());
-        } catch (NoSuchAlgorithmException | InterruptedException | InvalidKeyException | IOException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException | IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public int getQuotaLimit() throws IOException {
-        Signature sign = generateSignature();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/quotaLimit?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
-        final String responseBody;
-        try {
-            HttpResponse<String> response = connectionHandler.getClient().send(request, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            responseBody = response.body();
-            logger.debug(String.valueOf(responseBody));
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        return Integer.parseInt(responseBody);
     }
 
     public MessageQuota getRequestQuota() throws IOException {
         Signature sign = generateSignature();
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/remainingQuota?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
 
-        try {
-            HttpResponse<String> response = connectionHandler.getClient().send(request, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            final String responseBody = response.body();
-            logger.debug(String.valueOf(responseBody));
-            if (response.statusCode() == 301) {
-                ValNarratorApplication.showAlertAndWait("Unsupported Version!", "Please update your app, you're on a unsupported version.");
-                System.exit(-1);
-            } else if (response.statusCode() == 300) {
-                ValNarratorApplication.showInformation("Information", responseBody);
-            }
-            isPremium = Boolean.parseBoolean(response.headers().firstValue("premium").get());
-
-            return new MessageQuota(Integer.parseInt(response.headers().firstValue("remainingQuota").get()), response.headers().firstValue("premiumTill").get(), Boolean.parseBoolean(response.headers().firstValue("premium").get()));
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
+        if (response.statusCode() == 301) {
+            ValNarratorApplication.showAlertAndWait("Unsupported Version!", "Please update your app, you're on a unsupported version.");
+            System.exit(-1);
+        } else if (response.statusCode() == 300) {
+            ValNarratorApplication.showInformation("Information", responseBody);
         }
+        isPremium = Boolean.parseBoolean(response.headers().firstValue("premium").get());
+
+        return new MessageQuota(Integer.parseInt(response.headers().firstValue("remainingQuota").get()), response.headers().firstValue("premiumTill").get(), Boolean.parseBoolean(response.headers().firstValue("premium").get()));
+    }
+
+    public int getQuotaLimit() throws IOException {
+        Signature sign = generateSignature();
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/quotaLimit?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
+        final String responseBody;
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
+        return Integer.parseInt(responseBody);
     }
 
     public MessageQuota addRequestQuota() throws IOException, QuotaExhaustedException {
         Signature sign = generateSignature();
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
-        try {
-            HttpResponse<String> response = connectionHandler.getClient().send(request, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            final String responseBody = response.body();
-            logger.debug(String.valueOf(responseBody));
-            logger.debug(String.valueOf(response.headers()));
-            if (response.statusCode() == 301) {
-                ValNarratorApplication.showAlertAndWait("Unsupported Version!", "Please update your app, you're on a unsupported version.");
-                System.exit(-1);
-            } else if (response.statusCode() == 300) {
-                ValNarratorApplication.showInformation("Information", responseBody);
-            } else if (response.statusCode() == 403) {
-                throw new QuotaExhaustedException(Long.parseLong(response.headers().firstValue("refreshesIn").get()));
-            }
-            isPremium = Boolean.parseBoolean(response.headers().firstValue("premium").get());
-
-            System.setProperty("aws.accessKeyId", response.headers().firstValue("Aws_access_key_id").get());
-            System.setProperty("aws.secretKey", response.headers().firstValue("Aws_secret_access_key").get());
-            System.setProperty("aws.sessionToken", response.headers().firstValue("Aws_session_token").get());
-            final MessageQuota messageQuota = new MessageQuota(Integer.parseInt(response.headers().firstValue("remainingQuota").get()), response.headers().firstValue("premiumTill").get(), Boolean.parseBoolean(response.headers().firstValue("premium").get()));
-            ChatDataHandler.getInstance().updateQuota(messageQuota.remainingQuota());
-            return messageQuota;
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
+        logger.debug(String.valueOf(response.headers()));
+        if (response.statusCode() == 301) {
+            ValNarratorApplication.showAlertAndWait("Unsupported Version!", "Please update your app, you're on a unsupported version.");
+            System.exit(-1);
+        } else if (response.statusCode() == 300) {
+            ValNarratorApplication.showInformation("Information", responseBody);
+        } else if (response.statusCode() == 403) {
+            throw new QuotaExhaustedException(Long.parseLong(response.headers().firstValue("refreshesIn").get()));
         }
+        isPremium = Boolean.parseBoolean(response.headers().firstValue("premium").get());
+
+        System.setProperty("aws.accessKeyId", response.headers().firstValue("Aws_access_key_id").get());
+        System.setProperty("aws.secretKey", response.headers().firstValue("Aws_secret_access_key").get());
+        System.setProperty("aws.sessionToken", response.headers().firstValue("Aws_session_token").get());
+        final MessageQuota messageQuota = new MessageQuota(Integer.parseInt(response.headers().firstValue("remainingQuota").get()), response.headers().firstValue("premiumTill").get(), Boolean.parseBoolean(response.headers().firstValue("premium").get()));
+        ChatDataHandler.getInstance().updateQuota(messageQuota.remainingQuota());
+        return messageQuota;
     }
 
     public EntitlementsTokenResponse getEntitlement(LockFileHandler lockFileHandler) {
@@ -212,69 +228,57 @@ public class APIHandler {
         String auth = String.format("Basic %s", new String(Base64.getEncoder().encode(String.format("riot:%s", lockFileHandler.getPassword()).getBytes())));
         HttpRequest entitlementReq = HttpRequest.newBuilder().uri(URI.create(entitlementUrl)).setHeader("Authorization", auth).build();
         final String responseBody;
-        try {
-            HttpResponse<String> response = connectionHandler.getClient().send(entitlementReq, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            responseBody = response.body().replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
-            logger.debug(responseBody);
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), entitlementReq, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        responseBody = response.body().replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
+        logger.debug(responseBody);
         return new Gson().fromJson(responseBody, EntitlementsTokenResponse.class);
     }
 
     public ArrayList<PlayerAccount> getPlayerNames(final String accessToken, final RiotClientDetails riotClientDetails, final String entitlementToken, final ArrayList<String> playerIDs) {
         final Gson gson = new Gson();
         HttpRequest playerReq = HttpRequest.newBuilder().uri(URI.create(String.format("https://pd.%s.a.pvp.net/name-service/v2/players", riotClientDetails.subject_deployment()))).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-Entitlements-JWT", entitlementToken).header("X-Riot-ClientVersion", riotClientDetails.version()).PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(playerIDs))).build();
-        try {
 
-            HttpResponse<String> response = connectionHandler.getClient().send(playerReq, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            final String responseBody = response.body();
-            logger.debug(String.valueOf(responseBody));
-            Type playerListType = new TypeToken<List<PlayerAccount>>() {
-            }.getType();
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), playerReq, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
+        Type playerListType = new TypeToken<List<PlayerAccount>>() {
+        }.getType();
 
-            return gson.fromJson(responseBody, playerListType);
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        return gson.fromJson(responseBody, playerListType);
     }
 
     public RiotClientDetails getRiotClientDetails(LockFileHandler lockFileHandler) {
         String riotClientSessionUrl = String.format("https://127.0.0.1:%d/product-session/v1/external-sessions", lockFileHandler.getPort());
         String auth = String.format("Basic %s", new String(Base64.getEncoder().encode(String.format("riot:%s", lockFileHandler.getPassword()).getBytes())));
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(riotClientSessionUrl)).setHeader("Authorization", auth).build();
-        try {
-            HttpResponse<String> response = connectionHandler.getClient().send(request, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            final String responseBody = response.body();
-            logger.debug(String.valueOf(responseBody));
-            Gson gson = new Gson();
-            Type type = new TypeToken<Map<String, JsonObject>>() {
-            }.getType();
-            Map<String, JsonObject> sessionsResponse = gson.fromJson(responseBody, type);
-            String version = null, subject_id = null, subject_deployment = null;
-            for (Map.Entry<String, JsonObject> entry : sessionsResponse.entrySet()) {
-                if (entry.getKey().equals("host_app")) continue;
-                JsonObject sessionData = entry.getValue();
-                version = sessionData.get("version").getAsString();
-                JsonObject launchConfig = sessionData.get("launchConfiguration").getAsJsonObject();
-                JsonArray arguments = launchConfig.get("arguments").getAsJsonArray();
-                for (var arg : arguments) {
-                    if (arg.getAsString().startsWith("-subject=")) {
-                        subject_id = arg.getAsString().split("=")[1];
-                    }
-                    if (arg.getAsString().startsWith("-ares-deployment=")) {
-                        subject_deployment = arg.getAsString().split("=")[1];
-                    }
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
+        Gson gson = new Gson();
+        Type type = new TypeToken<Map<String, JsonObject>>() {
+        }.getType();
+        Map<String, JsonObject> sessionsResponse = gson.fromJson(responseBody, type);
+        String version = null, subject_id = null, subject_deployment = null;
+        for (Map.Entry<String, JsonObject> entry : sessionsResponse.entrySet()) {
+            if (entry.getKey().equals("host_app")) continue;
+            JsonObject sessionData = entry.getValue();
+            version = sessionData.get("version").getAsString();
+            JsonObject launchConfig = sessionData.get("launchConfiguration").getAsJsonObject();
+            JsonArray arguments = launchConfig.get("arguments").getAsJsonArray();
+            for (var arg : arguments) {
+                if (arg.getAsString().startsWith("-subject=")) {
+                    subject_id = arg.getAsString().split("=")[1];
+                }
+                if (arg.getAsString().startsWith("-ares-deployment=")) {
+                    subject_deployment = arg.getAsString().split("=")[1];
                 }
             }
-
-            return new RiotClientDetails(version, subject_id, subject_deployment);
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
         }
+
+        return new RiotClientDetails(version, subject_id, subject_deployment);
     }
 
 
@@ -284,30 +288,22 @@ public class APIHandler {
 
     public String getEncodedPlayerSettings(final String accessToken, final String version) {
         HttpRequest settingsReq = HttpRequest.newBuilder().uri(URI.create("https://playerpreferences.riotgames.com/playerPref/v3/getPreference/Ares.PlayerSettings")).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-ClientVersion", version).build();
-        try {
-            HttpResponse<String> response = connectionHandler.getClient().send(settingsReq, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            final String responseBody = response.body();
-            final String encodedPlayerSettings = String.valueOf(responseBody);
-            logger.debug(encodedPlayerSettings);
-            return new Gson().fromJson(encodedPlayerSettings, JsonObject.class).get("data").getAsString();
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), settingsReq, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        final String encodedPlayerSettings = String.valueOf(responseBody);
+        logger.debug(encodedPlayerSettings);
+        return new Gson().fromJson(encodedPlayerSettings, JsonObject.class).get("data").getAsString();
     }
 
     public void setEncodedPlayerSettings(final String accessToken, final String version, final String encodedSettings) {
         final SettingsData settingsData = new SettingsData(encodedSettings, "Ares.PlayerSettings");
         final String jsonString = new Gson().toJson(settingsData);
         HttpRequest settingsReq = HttpRequest.newBuilder().uri(URI.create("https://playerpreferences.riotgames.com/playerPref/v3/savePreference")).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-ClientVersion", version).PUT(HttpRequest.BodyPublishers.ofString(jsonString)).header("Content-Type", "application/json").build();
-        try {
-            HttpResponse<String> response = connectionHandler.getClient().send(settingsReq, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            final String responseBody = response.body();
-            logger.debug(String.valueOf(responseBody));
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), settingsReq, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
     }
 
     public AbstractMap.Entry<HttpResponse<String>, String> speakPremiumVoice(final String voice, final String text) throws IOException {
@@ -320,27 +316,23 @@ public class APIHandler {
                   "speed": 1
                 }""", voice, text))).setHeader("content-type", "application/json").build();
         HttpResponse<String> response;
-        try {
-            response = connectionHandler.getClient().send(request, HttpResponse.BodyHandlers.ofString());
-            logger.debug(String.valueOf(response));
-            final String responseBody = response.body();
-            logger.debug(String.valueOf(responseBody));
-            if (response.statusCode() == 503) {
-                ValNarratorApplication.showAlert("Server Error!", "Custom voices is currently down, please try again later.");
-                ValNarratorController.getLatestInstance().revertVoiceSelection();
-                return new AbstractMap.SimpleEntry<>(response, null);
-            }
-            return new AbstractMap.SimpleEntry<>(response, responseBody);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
+        if (response.statusCode() == 503) {
+            ValNarratorApplication.showAlert("Server Error!", "Custom voices is currently down, please try again later.");
+            ValNarratorController.getLatestInstance().revertVoiceSelection();
+            return new AbstractMap.SimpleEntry<>(response, null);
         }
+        return new AbstractMap.SimpleEntry<>(response, responseBody);
     }
 
-    public String getSubscriptionURL() throws IOException, InterruptedException {
+    public String getSubscriptionURL() {
         String jsonPayload = String.format("{\"plan_id\": \"%s\",\n\"quantity\": \"1\",\n\"custom_id\": \"%s\",\n\"application_context\": {\n\"shipping_preference\": \"NO_SHIPPING\",\n\"return_url\": \"%s/payment_return\",\n\"cancel_url\": \"%s/payment_cancel\"\n}\n}", getProperties().getProperty("paymentPlanID"), serialNumber, getProperties().getProperty("paymentLink"), getProperties().getProperty("paymentLink"));
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(getProperties().getProperty("paymentLink"))).POST(HttpRequest.BodyPublishers.ofString(jsonPayload)).setHeader("content-type", "application/json").build();
 
-        HttpResponse<String> response = connectionHandler.getClient().send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
         logger.debug(String.valueOf(responseBody));

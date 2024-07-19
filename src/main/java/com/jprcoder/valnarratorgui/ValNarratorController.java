@@ -22,6 +22,8 @@ import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
+import java.util.ResourceBundle;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
@@ -48,9 +50,12 @@ record XMPPEvent(String type, long time, String data) {
     }
 }
 
+//TODO: Seperate a new class named ValNarratorProperties for utility/property methods.
 public class ValNarratorController implements XMPPEventDispatcher {
     private static final Logger logger = LoggerFactory.getLogger(ValNarratorController.class);
     private static ValNarratorController latestInstance;
+    @FXML
+    public Slider rateSlider;
     @FXML
     public TextField keybindTextField;
     @FXML
@@ -181,8 +186,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
             ProcessBuilder processBuilder = new ProcessBuilder(xmppPath);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
-
-            new Thread(() -> {
+            CompletableFuture.runAsync(() -> {
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line;
                 while (true) {
@@ -213,7 +217,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                                     ChatDataHandler.getInstance().getProperties().setSelfID(jid);
                                 }
                                 ValNarratorController.getLatestInstance().dispatchEvent(event);
-                                if (!ValNarratorController.getLatestInstance().isLoading() && ChatDataHandler.getInstance().getProperties().getState()) {
+                                if (!ValNarratorController.getLatestInstance().isLoading() && ChatDataHandler.getInstance().getProperties().isDisabled()) {
                                     continue;
                                 }
 
@@ -235,7 +239,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                              IOException ignored) {
                     }
                 }
-            }).start();
+            });
         } catch (IOException e) {
             logger.error("Running Xmpp-Node generated an error: ");
             e.printStackTrace();
@@ -276,6 +280,21 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 ValNarratorController.getLatestInstance().voices.getItems().addAll(inbuiltVoiceNames);
             });
         });
+
+        rateSlider.valueProperty().addListener((observable, oldValue, newValue) -> VoiceGenerator.setCurrentRate(newValue.shortValue()));
+    }
+
+    public void switchLanguage(String langCode) {
+        Locale locale = new Locale(langCode);
+        ResourceBundle bundle = ResourceBundle.getBundle("messages", locale);
+    }
+
+    public void disableRateSlider() {
+        rateSlider.setDisable(true);
+    }
+
+    public void enableRateSlider() {
+        rateSlider.setDisable(false);
     }
 
     public void openDiscordInvite() {
@@ -290,8 +309,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void ignorePlayer() {
         final String player = addIgnoredPlayer.getValue();
-        if (player.equals("Add RiotId#RiotTag"))
-            return;
+        if (player.equals("Add RiotId#RiotTag")) return;
         logger.info(String.format("Ignoring player %s", player));
         ChatDataHandler.getInstance().getProperties().addIgnoredPlayer(player);
         addIgnoredPlayer.getItems().remove(player);
@@ -301,8 +319,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void unignorePlayer() {
         final String player = removeIgnoredPlayer.getValue();
-        if (player.equals("View/Remove RiotID#RiotTag"))
-            return;
+        if (player.equals("View/Remove RiotID#RiotTag")) return;
         logger.info(String.format("Unignoring player %s", player));
         ChatDataHandler.getInstance().getProperties().removeIgnoredPlayer(player);
         removeIgnoredPlayer.getItems().remove(player);
@@ -372,7 +389,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
         }
     }
 
-    public void browseSubscription() throws IOException, InterruptedException {
+    public void browseSubscription() throws IOException {
         String subscriptionURL = ChatDataHandler.getInstance().getAPIHandler().getSubscriptionURL();
         if (subscriptionURL != null) {
             java.awt.Desktop.getDesktop().browse(java.net.URI.create(subscriptionURL));
@@ -435,25 +452,32 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 panelInfo.setVisible(false);
                 panelSettings.setVisible(false);
                 panelUser.setVisible(false);
+                btnInfo.setOpacity(0.4);
+                btnUser.setOpacity(0.4);
+                btnSettings.setOpacity(0.4);
             } else {
                 lastAnchorPane.setVisible(true);
+                btnInfo.setOpacity(1);
+                btnUser.setOpacity(1);
+                btnSettings.setOpacity(1);
             }
         }
 
-        if (event.getTarget() == btnInfo) {
+        if (event.getTarget() == btnInfo && !ChatDataHandler.getInstance().getProperties().isDisabled()) {
             panelInfo.setVisible(true);
             panelSettings.setVisible(false);
             panelUser.setVisible(false);
-        } else if (event.getTarget() == btnUser) {
+        } else if (event.getTarget() == btnUser && !ChatDataHandler.getInstance().getProperties().isDisabled()) {
             panelInfo.setVisible(false);
             panelSettings.setVisible(false);
             panelUser.setVisible(true);
-        } else if (event.getTarget() == btnSettings) {
+        } else if (event.getTarget() == btnSettings && !ChatDataHandler.getInstance().getProperties().isDisabled()) {
             panelInfo.setVisible(false);
             panelSettings.setVisible(true);
             panelUser.setVisible(false);
         }
     }
+
 
     public void selectSource() throws IOException {
         final String rawSource = sources.getValue();
@@ -539,7 +563,11 @@ public class ValNarratorController implements XMPPEventDispatcher {
     }
 
     public void toggleTeamChat() throws IOException {
-        VoiceGenerator.getInstance().toggleTeamKey();
+        if (VoiceGenerator.getInstance().toggleTeamKey()) {
+            logger.info("Toggled Team Chat PTT ON");
+        } else {
+            logger.info("Toggled Team Chat PTT OFF");
+        }
     }
 
     public void togglePrivateMessages() {
@@ -601,6 +629,10 @@ public class ValNarratorController implements XMPPEventDispatcher {
         } else if (event.data().contains("_xmpp_session1")) {
             Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Valorant opened."));
             isLoading = false;
+            btnPower.setOpacity(1);
+            btnInfo.setOpacity(1);
+            btnUser.setOpacity(1);
+            btnSettings.setOpacity(1);
         }
     }
 

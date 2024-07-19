@@ -61,7 +61,7 @@ public class ChatDataHandler {
     }
 
     public void message(Message message) {
-        if (properties.getState()) {
+        if (properties.isDisabled()) {
             logger.info("Valorant Narrator disabled, ignoring message!");
             return;
         }

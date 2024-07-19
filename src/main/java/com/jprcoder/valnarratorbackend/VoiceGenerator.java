@@ -59,13 +59,14 @@ public class VoiceGenerator {
     private static final ConnectionHandler connectionHandler;
     private static final InbuiltVoiceSynthesizer synthesizer = new InbuiltVoiceSynthesizer();
     private static boolean isSpeaking = false;
-    private static boolean isTeamKeyDisabled = true;
+    private static boolean isTeamKeyEnabled = true;
     private static boolean syncValorantSettingsToggle = true;
     private static boolean isSystemMicStreamed = false;
     private static boolean isPrivateMessagesEnabled = false;
     private static String currentVoice = "Matthew";
     private static Sources currentSource = Sources.SELF;
     private static VoiceType currentVoiceType = VoiceType.STANDARD;
+    private static short currentVoiceRate = 100;
     private static RiotClientDetails riotClientDetails;
     private static String accessToken;
     private static EntitlementsTokenResponse entitlement;
@@ -90,12 +91,15 @@ public class VoiceGenerator {
         isVoiceActive = new ResponseProcess();
     }
 
+    private final Robot robot = new Robot();
+    private int keyEvent;
+
     private VoiceGenerator() throws AWTException, IOException {
         this.keyEvent = defaultKeyEvent;
         loadConfig();
         keybindChange(keyEvent);
 
-        Platform.runLater(() -> ValNarratorController.getLatestInstance().teamChatButton.setSelected(isTeamKeyDisabled));
+        Platform.runLater(() -> ValNarratorController.getLatestInstance().teamChatButton.setSelected(isTeamKeyEnabled));
         Platform.runLater(() -> ValNarratorController.getLatestInstance().valorantSettings.setSelected(syncValorantSettingsToggle));
         Platform.runLater(() -> ValNarratorController.getLatestInstance().sources.getSelectionModel().select(currentSource.name().replace("_", "+")));
         Platform.runLater(() -> {
@@ -127,9 +131,6 @@ public class VoiceGenerator {
     public static String getAccessToken() {
         return accessToken;
     }
-
-    private final Robot robot = new Robot();
-    private int keyEvent;
 
     public static EntitlementsTokenResponse getEntitlement() {
         return entitlement;
@@ -166,6 +167,10 @@ public class VoiceGenerator {
         return voiceName.substring(0, voiceName.lastIndexOf(','));
     }
 
+    public static void setCurrentRate(final short rate) {
+        currentVoiceRate = rate;
+    }
+
     public static boolean setCurrentVoice(final String voice) {
         final VoiceType voiceType = fromString(voice);
         if (voiceType == VoiceType.PREMIUM) {
@@ -174,6 +179,9 @@ public class VoiceGenerator {
                 showAlert("Premium Required", "Valorant voices are available with premium, please subscribe to premium to continue using this voice! You can subscribe in the info tab.");
                 return false;
             }
+            ValNarratorController.getLatestInstance().disableRateSlider();
+        } else {
+            ValNarratorController.getLatestInstance().enableRateSlider();
         }
         currentVoice = filterVoiceName(voice);
         currentVoiceType = voiceType;
@@ -256,13 +264,17 @@ public class VoiceGenerator {
         Path path = Paths.get(System.getenv("LocalAppData"), "VALORANT", "Saved", "Config", String.format("%s-%s", riotClientDetails.subject_id(), riotClientDetails.subject_deployment()), "Windows", "RiotUserSettings.ini");
         String configData = Files.readString(path, StandardCharsets.UTF_8);
         String[] data = configData.split("\n");
+        boolean deviceCaptureOverridden = false;
+        final String voiceCaptureData = String.format("%s\"{%s}\"", "EAresStringSettingName::VoiceDeviceCaptureHandle=", id);
         for (int i = 0; i < data.length; i++) {
             if (data[i].startsWith("EAresStringSettingName::VoiceDeviceCaptureHandle=")) {
-                data[i] = String.format("%s\"{%s}\"", "EAresStringSettingName::VoiceDeviceCaptureHandle=", id);
+                data[i] = voiceCaptureData;
+                deviceCaptureOverridden = true;
             }
         }
         try (FileWriter writer = new FileWriter(String.valueOf(path))) {
             writer.write(String.join("\n", data));
+            if (!deviceCaptureOverridden) writer.write(voiceCaptureData);
         }
     }
 
@@ -272,9 +284,10 @@ public class VoiceGenerator {
         return syncValorantSettingsToggle;
     }
 
-    public void toggleTeamKey() throws IOException {
-        isTeamKeyDisabled = !isTeamKeyDisabled;
+    public boolean toggleTeamKey() throws IOException {
+        isTeamKeyEnabled = !isTeamKeyEnabled;
         saveConfig();
+        return isTeamKeyEnabled;
     }
 
     private void keybindChange(int keyEvent) {
@@ -317,7 +330,7 @@ public class VoiceGenerator {
         File configFile = new File(CONFIG_DIR, CONFIG_FILE);
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("keyEvent", defaultKeyEvent);
-        jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyDisabled);
+        jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyEnabled);
         jsonObject.addProperty("syncValorantSettingsToggle", syncValorantSettingsToggle);
         jsonObject.addProperty("sources", currentSource.name());
         jsonObject.addProperty("isSystemMicStreamed", isSystemMicStreamed);
@@ -341,7 +354,7 @@ public class VoiceGenerator {
                     keyEvent = jsonObject.get("keyEvent").getAsInt();
                 }
                 if (jsonObject.has("isTeamKeyDisabled")) {
-                    isTeamKeyDisabled = jsonObject.get("isTeamKeyDisabled").getAsBoolean();
+                    isTeamKeyEnabled = jsonObject.get("isTeamKeyDisabled").getAsBoolean();
                 }
                 if (jsonObject.has("syncValorantSettingsToggle")) {
                     syncValorantSettingsToggle = jsonObject.get("syncValorantSettingsToggle").getAsBoolean();
@@ -390,7 +403,7 @@ public class VoiceGenerator {
     private JsonObject getJsonObject() {
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("keyEvent", keyEvent);
-        jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyDisabled);
+        jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyEnabled);
         jsonObject.addProperty("syncValorantSettingsToggle", syncValorantSettingsToggle);
         jsonObject.addProperty("sources", currentSource.name());
         jsonObject.addProperty("isSystemMicStreamed", isSystemMicStreamed);
@@ -444,8 +457,9 @@ public class VoiceGenerator {
         } else if (voiceType == VoiceType.INBUILT) {
             logger.debug("Using inbuilt voice: {}", currentVoice);
             long start = System.currentTimeMillis();
-            robot.keyPress(keyEvent);
-            synthesizer.speakInbuiltVoice(currentVoice, text);
+            if (isTeamKeyEnabled)
+                robot.keyPress(keyEvent);
+            synthesizer.speakInbuiltVoice(currentVoice, text, currentVoiceRate);
             logger.debug("Finished speaking in {}ms", System.currentTimeMillis() - start);
             return new AbstractMap.SimpleEntry<>(voiceType, null);
         }
@@ -453,9 +467,9 @@ public class VoiceGenerator {
         InputStream speechStream;
         final AbstractMap.Entry<HttpResponse<InputStream>, InputStream> response;
         if ((ChatDataHandler.getInstance().isPremium() && !normalVoices.contains(currentVoice)) || neuralVoices.contains(currentVoice)) {
-            response = ChatDataHandler.getInstance().getAPIHandler().speakVoice(text, getCurrentVoice(), VoiceEngineType.NEURAL, id, key, sessionToken);
+            response = ChatDataHandler.getInstance().getAPIHandler().speakVoice(text, currentVoiceRate, getCurrentVoice(), VoiceEngineType.NEURAL, id, key, sessionToken);
         } else {
-            response = ChatDataHandler.getInstance().getAPIHandler().speakVoice(text, getCurrentVoice(), VoiceEngineType.STANDARD, id, key, sessionToken);
+            response = ChatDataHandler.getInstance().getAPIHandler().speakVoice(text, currentVoiceRate, getCurrentVoice(), VoiceEngineType.STANDARD, id, key, sessionToken);
         }
         speechStream = response.getValue();
         AdvancedPlayer player;
@@ -496,12 +510,12 @@ public class VoiceGenerator {
 
         @Override
         public void playbackStarted(PlaybackEvent evt) {
-            robot.keyPress(keyEvent);
+            if (isTeamKeyEnabled) robot.keyPress(keyEvent);
         }
 
         @Override
         public void playbackFinished(PlaybackEvent evt) {
-            robot.keyRelease(keyEvent);
+            if (isTeamKeyEnabled) robot.keyRelease(keyEvent);
         }
     }
 }
