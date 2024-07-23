@@ -309,7 +309,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void ignorePlayer() {
         final String player = addIgnoredPlayer.getValue();
-        if (player.equals("Add RiotId#RiotTag")) return;
+        if (player != null && player.equals("Add RiotId#RiotTag")) return;
         logger.info(String.format("Ignoring player %s", player));
         ChatDataHandler.getInstance().getProperties().addIgnoredPlayer(player);
         addIgnoredPlayer.getItems().remove(player);
@@ -319,7 +319,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void unignorePlayer() {
         final String player = removeIgnoredPlayer.getValue();
-        if (player.equals("View/Remove RiotID#RiotTag")) return;
+        if (player != null && player.equals("View/Remove RiotID#RiotTag")) return;
         logger.info(String.format("Unignoring player %s", player));
         ChatDataHandler.getInstance().getProperties().removeIgnoredPlayer(player);
         removeIgnoredPlayer.getItems().remove(player);

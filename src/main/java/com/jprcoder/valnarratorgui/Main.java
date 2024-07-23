@@ -136,7 +136,7 @@ public class Main {
                 }
                 System.exit(0);
             });
-            JOptionPane.showMessageDialog(null, String.format("ValorantNarrator v-%1$,.2f has been installed successfully!", currentVersion), "Installation", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(null, String.format("ValorantNarrator v-%1$,.2f has been downloaded, restart the system for finishing the installation!", currentVersion), "Installation", JOptionPane.INFORMATION_MESSAGE);
         }
 
         logger.info(String.format("Starting Valorant-Narrator on v-%1$,.2f", currentVersion));
@@ -176,6 +176,10 @@ public class Main {
         RegistrationInfo ri;
         try {
             ri = fetchRegistrationInfo();
+            if(ri == null){
+                ValNarratorApplication.showAlertAndWait("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.");
+                System.exit(-1);
+            }
         } catch (com.google.gson.JsonSyntaxException | IOException e) {
             logger.error("CRITICAL: API is down!");
             return;

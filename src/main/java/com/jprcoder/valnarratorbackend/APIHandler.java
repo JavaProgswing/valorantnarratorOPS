@@ -85,6 +85,9 @@ public class APIHandler {
         if (response.statusCode() == 409) {
             return new RegistrationInfo(false, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
         }
+        if(response.statusCode() == 426){
+            return null;
+        }
         return new RegistrationInfo(true, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
     }
 
