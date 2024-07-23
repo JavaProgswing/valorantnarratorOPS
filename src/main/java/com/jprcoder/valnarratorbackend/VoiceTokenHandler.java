@@ -1,11 +1,13 @@
 package com.jprcoder.valnarratorbackend;
 
+import com.jprcoder.valnarratorgui.ValNarratorApplication;
 import com.jprcoder.valnarratorgui.ValNarratorController;
 import javafx.application.Platform;
 import javafx.scene.paint.Color;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
@@ -43,6 +45,9 @@ public class VoiceTokenHandler {
                         logger.warn(String.format("Failed to sleep: %s", e.getMessage()));
                     }
                     continue;
+                } catch (OutdatedVersioningException e) {
+                    ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                    throw new RuntimeException(e);
                 }
                 LAST_REFRESH_MS = System.currentTimeMillis();
                 logger.info("Token has been refreshed!");

@@ -411,7 +411,7 @@ public class VoiceGenerator {
         return jsonObject;
     }
 
-    public Map.Entry<VoiceType, HttpResponse<?>> speakVoice(String text) throws IOException, QuotaExhaustedException {
+    public Map.Entry<VoiceType, HttpResponse<?>> speakVoice(String text) throws IOException, QuotaExhaustedException, OutdatedVersioningException {
         boolean isTextOverflowed = Math.min(text.length(), 71) != text.length();
 
         logger.info(String.format("(%s)Narrating message: '%s' with (%s)%s's voice", (isTextOverflowed) ? "-" : "+", text, currentVoiceType, getCurrentVoice()));

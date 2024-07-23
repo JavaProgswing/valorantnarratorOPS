@@ -11,6 +11,7 @@ import com.jprcoder.valnarratorgui.ValNarratorController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.*;
 import java.io.DataInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -71,7 +72,7 @@ public class APIHandler {
         return new Gson().fromJson(responseBody, VersionInfo.class);
     }
 
-    public static RegistrationInfo fetchRegistrationInfo() throws IOException, InterruptedException {
+    public static RegistrationInfo fetchRegistrationInfo() throws IOException, InterruptedException, OutdatedVersioningException {
         HttpClient client = HttpClient.newHttpClient();
         Signature sign = SignatureValidator.generateRegistrationSignature(serialNumber);
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/register?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
@@ -85,8 +86,8 @@ public class APIHandler {
         if (response.statusCode() == 409) {
             return new RegistrationInfo(false, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
         }
-        if(response.statusCode() == 426){
-            return null;
+        if (response.statusCode() == 426) {
+            throw new OutdatedVersioningException();
         }
         return new RegistrationInfo(true, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
     }
@@ -167,10 +168,13 @@ public class APIHandler {
             return new AbstractMap.SimpleEntry<>(response, response.body());
         } catch (NoSuchAlgorithmException | InvalidKeyException | IOException e) {
             throw new RuntimeException(e);
+        } catch (OutdatedVersioningException e) {
+            ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            throw new RuntimeException(e);
         }
     }
 
-    public MessageQuota getRequestQuota() throws IOException {
+    public MessageQuota getRequestQuota() throws IOException, OutdatedVersioningException {
         Signature sign = generateSignature();
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/remainingQuota?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
 
@@ -183,24 +187,30 @@ public class APIHandler {
             System.exit(-1);
         } else if (response.statusCode() == 300) {
             ValNarratorApplication.showInformation("Information", responseBody);
+        } else if (response.statusCode() == 426) {
+            throw new OutdatedVersioningException();
         }
         isPremium = Boolean.parseBoolean(response.headers().firstValue("premium").get());
 
         return new MessageQuota(Integer.parseInt(response.headers().firstValue("remainingQuota").get()), response.headers().firstValue("premiumTill").get(), Boolean.parseBoolean(response.headers().firstValue("premium").get()));
     }
 
-    public int getQuotaLimit() throws IOException {
+    public int getQuotaLimit() throws IOException, OutdatedVersioningException {
         Signature sign = generateSignature();
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/quotaLimit?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
         final String responseBody;
         HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
         responseBody = response.body();
+
+        if (response.statusCode() == 426) {
+            throw new OutdatedVersioningException();
+        }
         logger.debug(String.valueOf(responseBody));
         return Integer.parseInt(responseBody);
     }
 
-    public MessageQuota addRequestQuota() throws IOException, QuotaExhaustedException {
+    public MessageQuota addRequestQuota() throws IOException, QuotaExhaustedException, OutdatedVersioningException {
         Signature sign = generateSignature();
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
         HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
@@ -215,6 +225,8 @@ public class APIHandler {
             ValNarratorApplication.showInformation("Information", responseBody);
         } else if (response.statusCode() == 403) {
             throw new QuotaExhaustedException(Long.parseLong(response.headers().firstValue("refreshesIn").get()));
+        } else if (response.statusCode() == 426) {
+            throw new OutdatedVersioningException();
         }
         isPremium = Boolean.parseBoolean(response.headers().firstValue("premium").get());
 
@@ -309,7 +321,7 @@ public class APIHandler {
         logger.debug(String.valueOf(responseBody));
     }
 
-    public AbstractMap.Entry<HttpResponse<String>, String> speakPremiumVoice(final String voice, final String text) throws IOException {
+    public AbstractMap.Entry<HttpResponse<String>, String> speakPremiumVoice(final String voice, final String text) throws IOException, OutdatedVersioningException {
         Signature sign = generateSignature();
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/getPremiumVoice?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).POST(HttpRequest.BodyPublishers.ofString(String.format("""
                 {
@@ -327,6 +339,8 @@ public class APIHandler {
             ValNarratorApplication.showAlert("Server Error!", "Custom voices is currently down, please try again later.");
             ValNarratorController.getLatestInstance().revertVoiceSelection();
             return new AbstractMap.SimpleEntry<>(response, null);
+        } else if (response.statusCode() == 426) {
+            throw new OutdatedVersioningException();
         }
         return new AbstractMap.SimpleEntry<>(response, responseBody);
     }

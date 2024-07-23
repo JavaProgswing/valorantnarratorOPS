@@ -1,12 +1,14 @@
 package com.jprcoder.valnarratorbackend;
 
 import com.jprcoder.valnarratorgui.Main;
+import com.jprcoder.valnarratorgui.ValNarratorApplication;
 import com.jprcoder.valnarratorgui.ValNarratorController;
 import javafx.application.Platform;
 import javafx.scene.paint.Color;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -33,7 +35,12 @@ public class ChatDataHandler {
     private ChatDataHandler() throws NoSuchAlgorithmException, KeyManagementException, IOException {
         ConnectionHandler connectionHandler = new ConnectionHandler();
         APIHandler = new APIHandler(connectionHandler);
-        properties = new Chat(APIHandler.getQuotaLimit());
+        try {
+            properties = new Chat(APIHandler.getQuotaLimit());
+        } catch (OutdatedVersioningException e) {
+            ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            throw new RuntimeException(e);
+        }
         try {
             initialize();
         } catch (IOException e) {
@@ -55,7 +62,13 @@ public class ChatDataHandler {
     public void initialize() throws IOException {
         Platform.runLater(() -> ValNarratorController.getLatestInstance().setUserIDLabel(Main.serialNumber));
 
-        MessageQuota mq = APIHandler.getRequestQuota();
+        MessageQuota mq;
+        try {
+            mq = APIHandler.getRequestQuota();
+        } catch (OutdatedVersioningException e) {
+            ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            throw new RuntimeException(e);
+        }
         ValNarratorController.getLatestInstance().updateRequestQuota(mq);
         APIHandler.setPremium(mq.isPremium());
     }
@@ -113,6 +126,9 @@ public class ChatDataHandler {
                     ValNarratorController.getLatestInstance().quotaLabel.setTextFill(Color.RED);
                     ValNarratorController.getLatestInstance().quotaBar.setProgress(0.0);
                 });
+            } catch (OutdatedVersioningException e) {
+                ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                throw new RuntimeException(e);
             }
         });
     }

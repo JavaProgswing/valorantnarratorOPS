@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -26,6 +27,10 @@ public class ValNarratorApplication extends Application {
     private static final Logger logger = LoggerFactory.getLogger(ValNarratorApplication.class);
     private boolean firstTime;
     private TrayIcon trayIcon;
+
+    public static void showPreStartupDialog(String headerText, String contentText, MessageType messageType) {
+        JOptionPane.showMessageDialog(null, headerText, contentText, messageType.getValue());
+    }
 
     public static void showInformation(String headerText, String contentText) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
