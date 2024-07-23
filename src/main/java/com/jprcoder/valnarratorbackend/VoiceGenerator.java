@@ -209,6 +209,24 @@ public class VoiceGenerator {
     }
 
     public void syncValorantPlayerSettings() throws IOException, DataFormatException, InterruptedException {
+        try {
+            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
+            long pid = ProcessHandle.current().pid();
+            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
+            long start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
+        } catch (IOException e) {
+            logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
+        }
         LockFileHandler lockFileHandler = new LockFileHandler();
         APIHandler apiHandler = new APIHandler(connectionHandler);
         entitlement = apiHandler.getEntitlement(lockFileHandler);
@@ -253,6 +271,15 @@ public class VoiceGenerator {
             newObjectAtIndex0 = getJsonObject(0, keyEventName);
         }
         actionMappings.add(newObjectAtIndex0);
+        JsonArray boolSettings = settingsJson.getAsJsonArray("boolSettings");
+        for (int i = 0; i < boolSettings.size(); i++) {
+            JsonObject boolSetting = boolSettings.get(i).getAsJsonObject();
+            String settingEnum = boolSetting.get("settingEnum").getAsString();
+            if (settingEnum.equals("EAresBoolSettingName::PushToTalkEnabled")) {
+                boolSettings.remove(i);
+                i--;
+            }
+        }
         apiHandler.setEncodedPlayerSettings(accessToken, riotClientDetails.version(), ZlibCompression.deflateAndBase64Encode(settingsJson.toString()));
 
         String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
@@ -457,8 +484,10 @@ public class VoiceGenerator {
         } else if (voiceType == VoiceType.INBUILT) {
             logger.debug("Using inbuilt voice: {}", currentVoice);
             long start = System.currentTimeMillis();
-            if (isTeamKeyEnabled)
+            if (isTeamKeyEnabled) {
+                robot.keyRelease(keyEvent);
                 robot.keyPress(keyEvent);
+            }
             synthesizer.speakInbuiltVoice(currentVoice, text, currentVoiceRate);
             logger.debug("Finished speaking in {}ms", System.currentTimeMillis() - start);
             return new AbstractMap.SimpleEntry<>(voiceType, null);
