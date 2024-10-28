@@ -6,7 +6,7 @@
 
     <groupId>com.jprcoder</groupId>
     <artifactId>ValorantNarrator</artifactId>
-    <version>3.4</version>
+    <version>3.5</version>
     <name>ValorantNarrator</name>
 
     <properties>
@@ -211,92 +211,6 @@
 
                                 <argument>-mask</argument>
                                 <argument>ICONGROUP,MAINICON,</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>delete-xmpp</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>cmd.exe</executable>
-                            <arguments>
-                                <argument>/k</argument>
-                                <argument>rmdir</argument>
-                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp</argument>
-                                <argument>/s</argument>
-                                <argument>/q</argument>
-                                <argument>&amp;&amp;</argument>
-                                <argument>exit</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>copy-xmpp</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>cmd.exe</executable>
-                            <arguments>
-                                <argument>/k</argument>
-                                <argument>xcopy</argument>
-                                <argument>/f</argument>
-                                <argument>/s</argument>
-                                <argument>/y</argument>
-                                <argument>${project.basedir}\xmpp</argument>
-                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp\</argument>
-                                <argument>&amp;&amp;</argument>
-                                <argument>exit</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>install-xmpp</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>npm</executable>
-                            <workingDirectory>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp
-                            </workingDirectory>
-                            <arguments>
-                                <argument>install</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>build-xmpp</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>npm</executable>
-                            <workingDirectory>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp
-                            </workingDirectory>
-                            <arguments>
-                                <argument>run</argument>
-                                <argument>build</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>pkg-xmpp</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>pkg</executable>
-                            <workingDirectory>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\xmpp
-                            </workingDirectory>
-                            <arguments>
-                                <argument>.</argument>
                             </arguments>
                         </configuration>
                     </execution>

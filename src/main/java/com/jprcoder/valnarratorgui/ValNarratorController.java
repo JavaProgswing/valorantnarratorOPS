@@ -179,6 +179,27 @@ public class ValNarratorController implements XMPPEventDispatcher {
         } catch (IOException e) {
             logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
         }
+        try {
+            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
+            long pid = ProcessHandle.current().pid();
+            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
+        } catch (IOException e) {
+            logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
+        }
+        /*
+        Executing 2 times to prevent the Cable-INPUT bug.
+         */
         logger.info("Initialized app's sound output.");
         logger.info("Initializing xmpp-node.");
         try {
@@ -267,18 +288,17 @@ public class ValNarratorController implements XMPPEventDispatcher {
             ChatDataHandler.generateSingleton();
             new VoiceTokenHandler(ChatDataHandler.getInstance().getAPIHandler()).startRefreshToken();
             VoiceGenerator.generateSingleton();
+            Platform.runLater(() -> {
+                ArrayList<String> inbuiltVoiceNames = new ArrayList<>();
+                VoiceGenerator.getInbuiltVoices().forEach((n) -> inbuiltVoiceNames.add(String.format("%s, INBUILT", n)));
+                ValNarratorController.getLatestInstance().voices.getItems().addAll(inbuiltVoiceNames);
+            });
             try {
                 if (VoiceGenerator.isSyncValorantSettingsEnabled())
                     VoiceGenerator.getInstance().syncValorantPlayerSettings();
             } catch (IOException | DataFormatException | InterruptedException e) {
                 throw new RuntimeException(e);
             }
-
-            Platform.runLater(() -> {
-                ArrayList<String> inbuiltVoiceNames = new ArrayList<>();
-                VoiceGenerator.getInbuiltVoices().forEach((n) -> inbuiltVoiceNames.add(String.format("%s, INBUILT", n)));
-                ValNarratorController.getLatestInstance().voices.getItems().addAll(inbuiltVoiceNames);
-            });
         });
 
         rateSlider.valueProperty().addListener((observable, oldValue, newValue) -> VoiceGenerator.setCurrentRate(newValue.shortValue()));
@@ -299,7 +319,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void openDiscordInvite() {
         try {
-            java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://valnarrator.tech/discord"));
+            java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://valnarrator.vercel.app/discord"));
             logger.info("Opened discord invite link successfully!");
         } catch (IOException e) {
             logger.error("Could not open discord invite link!");

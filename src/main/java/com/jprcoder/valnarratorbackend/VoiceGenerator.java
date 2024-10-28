@@ -461,6 +461,8 @@ public class VoiceGenerator {
             } else startedSpeaking();
             ResponseProcess rp = new ResponseProcess();
             CompletableFuture.runAsync(() -> {
+                logger.debug("Using agent voice: {}", currentVoice);
+                long start = System.currentTimeMillis();
                 try {
                     URL url = new URL(audioUrl);
                     InputStream fin = url.openStream();
@@ -473,6 +475,7 @@ public class VoiceGenerator {
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
+                logger.debug("Finished speaking in {}ms", System.currentTimeMillis() - start);
                 try {
                     finishedSpeaking();
                     rp.setFinished();
@@ -492,6 +495,7 @@ public class VoiceGenerator {
             logger.debug("Finished speaking in {}ms", System.currentTimeMillis() - start);
             return new AbstractMap.SimpleEntry<>(voiceType, null);
         }
+
         String id = System.getProperty("aws.accessKeyId"), key = System.getProperty("aws.secretKey"), sessionToken = System.getProperty("aws.sessionToken");
         InputStream speechStream;
         final AbstractMap.Entry<HttpResponse<InputStream>, InputStream> response;
@@ -520,11 +524,14 @@ public class VoiceGenerator {
         } else startedSpeaking();
         ResponseProcess rp = new ResponseProcess();
         CompletableFuture.runAsync(() -> {
+            logger.debug("Using standard voice: {}", currentVoice);
+            long start = System.currentTimeMillis();
             try {
                 player.play();
             } catch (JavaLayerException e) {
                 logger.warn("Exception while playing normal voice!");
             }
+            logger.debug("Finished speaking in {}ms", System.currentTimeMillis() - start);
             try {
                 finishedSpeaking();
                 rp.setFinished();

@@ -15,7 +15,6 @@ import java.util.*;
  * Sign AWS Requests with Signature Version 4 Signing Process.
  */
 public class AWSSignatureV4Generator {
-
     private final String accessKeyID;
     private final String secretAccessKey;
     private final String regionName;

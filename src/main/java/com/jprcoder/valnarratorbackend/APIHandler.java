@@ -38,7 +38,7 @@ record SettingsData(String data, String type) {
 
 public class APIHandler {
     public static final Logger logger = LoggerFactory.getLogger(APIHandler.class);
-    private static final String valAPIUrl = "https://api.valnarrator.tech";
+    private static final String valAPIUrl = "https://api-valnarrator.vercel.app";
     private final ConnectionHandler connectionHandler;
     private boolean isPremium = false;
 
@@ -230,9 +230,9 @@ public class APIHandler {
         }
         isPremium = Boolean.parseBoolean(response.headers().firstValue("premium").get());
 
-        System.setProperty("aws.accessKeyId", response.headers().firstValue("Aws_access_key_id").get());
-        System.setProperty("aws.secretKey", response.headers().firstValue("Aws_secret_access_key").get());
-        System.setProperty("aws.sessionToken", response.headers().firstValue("Aws_session_token").get());
+        System.setProperty("aws.accessKeyId", response.headers().firstValue("aws-access-key-id").get());
+        System.setProperty("aws.secretKey", response.headers().firstValue("aws-secret-access-key").get());
+        System.setProperty("aws.sessionToken", response.headers().firstValue("aws-session-token").get());
         final MessageQuota messageQuota = new MessageQuota(Integer.parseInt(response.headers().firstValue("remainingQuota").get()), response.headers().firstValue("premiumTill").get(), Boolean.parseBoolean(response.headers().firstValue("premium").get()));
         ChatDataHandler.getInstance().updateQuota(messageQuota.remainingQuota());
         return messageQuota;
@@ -302,7 +302,7 @@ public class APIHandler {
     }
 
     public String getEncodedPlayerSettings(final String accessToken, final String version) {
-        HttpRequest settingsReq = HttpRequest.newBuilder().uri(URI.create("https://playerpreferences.riotgames.com/playerPref/v3/getPreference/Ares.PlayerSettings")).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-ClientVersion", version).build();
+        HttpRequest settingsReq = HttpRequest.newBuilder().uri(URI.create("https://player-preferences-usw2.pp.sgp.pvp.net/playerPref/v3/getPreference/Ares.PlayerSettings")).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-ClientVersion", version).build();
         HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), settingsReq, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
@@ -314,7 +314,7 @@ public class APIHandler {
     public void setEncodedPlayerSettings(final String accessToken, final String version, final String encodedSettings) {
         final SettingsData settingsData = new SettingsData(encodedSettings, "Ares.PlayerSettings");
         final String jsonString = new Gson().toJson(settingsData);
-        HttpRequest settingsReq = HttpRequest.newBuilder().uri(URI.create("https://playerpreferences.riotgames.com/playerPref/v3/savePreference")).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-ClientVersion", version).PUT(HttpRequest.BodyPublishers.ofString(jsonString)).header("Content-Type", "application/json").build();
+        HttpRequest settingsReq = HttpRequest.newBuilder().uri(URI.create("https://player-preferences-usw2.pp.sgp.pvp.net/playerPref/v3/savePreference")).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-ClientVersion", version).PUT(HttpRequest.BodyPublishers.ofString(jsonString)).header("Content-Type", "application/json").build();
         HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), settingsReq, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
