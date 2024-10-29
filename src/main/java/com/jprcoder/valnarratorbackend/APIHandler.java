@@ -333,8 +333,8 @@ public class APIHandler {
         HttpResponse<String> response;
         response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
-        final String responseBody = response.body();
-        logger.debug(String.valueOf(responseBody));
+        final String responseBody = response.body().replace("\"","");
+        logger.debug(responseBody);
         if (response.statusCode() == 503) {
             ValNarratorApplication.showAlert("Server Error!", "Custom voices is currently down, please try again later.");
             ValNarratorController.getLatestInstance().revertVoiceSelection();
