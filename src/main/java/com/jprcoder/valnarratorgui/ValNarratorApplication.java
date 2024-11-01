@@ -31,7 +31,7 @@ public class ValNarratorApplication extends Application {
     private TrayIcon trayIcon;
 
     public static void showPreStartupDialog(String headerText, String contentText, MessageType messageType) {
-        JOptionPane.showMessageDialog(null, headerText, contentText, messageType.getValue());
+        JOptionPane.showMessageDialog(null, contentText, headerText, messageType.getValue());
     }
 
     public static void showInformation(String headerText, String contentText) {
