@@ -105,7 +105,6 @@ public class ChatDataHandler {
             properties.getPlayerIDTable().put(playerID, playerName);
             properties.getPlayerNameTable().put(playerName, playerID);
             ValNarratorController.getLatestInstance().addIgnoredPlayer.getItems().addAll(playerName);
-            logger.debug(String.format("Added %s: %s to HASH-TABLE!", playerID, playerName));
         }
 
         properties.updateMessageStats(message);

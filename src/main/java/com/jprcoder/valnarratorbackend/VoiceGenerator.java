@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.DataFormatException;
 
 import static com.jprcoder.valnarratorbackend.VoiceType.fromString;
@@ -58,7 +59,8 @@ public class VoiceGenerator {
     private static final List<String> inbuiltVoices;
     private static final ConnectionHandler connectionHandler;
     private static final InbuiltVoiceSynthesizer synthesizer = new InbuiltVoiceSynthesizer();
-    private static boolean isSpeaking = false;
+    private static final AtomicBoolean isSpeaking = new AtomicBoolean(false);
+
     private static boolean isTeamKeyEnabled = true;
     private static boolean syncValorantSettingsToggle = true;
     private static boolean isSystemMicStreamed = false;
@@ -147,16 +149,12 @@ public class VoiceGenerator {
         return inbuiltVoices;
     }
 
-    private static boolean isAlreadySpeaking() {
-        return isSpeaking;
-    }
-
-    private static void startedSpeaking() {
-        isSpeaking = true;
+    private static boolean isSpeaking() {
+        return !isSpeaking.compareAndSet(false, true);
     }
 
     private static void finishedSpeaking() {
-        isSpeaking = false;
+        isSpeaking.set(false);
     }
 
     public static String getCurrentVoice() {
@@ -450,49 +448,52 @@ public class VoiceGenerator {
                 return new AbstractMap.SimpleEntry<>(voiceType, response.getKey());
             }
 
-            if (isAlreadySpeaking()) {
-                while (isAlreadySpeaking()) {
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            } else startedSpeaking();
-            ResponseProcess rp = new ResponseProcess();
-            CompletableFuture.runAsync(() -> {
-                logger.debug("Using agent voice: {}", currentVoice);
-                long start = System.currentTimeMillis();
+            while (isSpeaking()) {
                 try {
-                    URL url = new URL(audioUrl);
-                    InputStream fin = url.openStream();
-                    BufferedInputStream bin = new BufferedInputStream(fin);
-                    AdvancedPlayer player = new AdvancedPlayer(bin, FactoryRegistry.systemRegistry().createAudioDevice());
-                    player.setPlayBackListener(new CustomPlaybackListener());
-                    player.play();
-                } catch (JavaLayerException e) {
-                    logger.warn("Exception while playing agent voice!");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-                logger.debug("Finished speaking in {}ms", System.currentTimeMillis() - start);
-                try {
-                    finishedSpeaking();
-                    rp.setFinished();
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            }
+            logger.debug("Using agent voice: {}", currentVoice);
+            try {
+                URL url = new URL(audioUrl);
+                InputStream fin = url.openStream();
+                BufferedInputStream bin = new BufferedInputStream(fin);
+                AdvancedPlayer player = new AdvancedPlayer(bin, FactoryRegistry.systemRegistry().createAudioDevice());
+                player.setPlayBackListener(new CustomPlaybackListener());
+                player.play();
+            } catch (JavaLayerException e) {
+                logger.warn("Exception while playing agent voice!");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            try {
+                finishedSpeaking();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
             return new AbstractMap.SimpleEntry<>(voiceType, response.getKey());
         } else if (voiceType == VoiceType.INBUILT) {
             logger.debug("Using inbuilt voice: {}", currentVoice);
-            long start = System.currentTimeMillis();
             if (isTeamKeyEnabled) {
                 robot.keyRelease(keyEvent);
                 robot.keyPress(keyEvent);
             }
+            while (isSpeaking()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
             synthesizer.speakInbuiltVoice(currentVoice, text, currentVoiceRate);
-            logger.debug("Finished speaking in {}ms", System.currentTimeMillis() - start);
+            try {
+                finishedSpeaking();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             return new AbstractMap.SimpleEntry<>(voiceType, null);
         }
 
@@ -513,32 +514,24 @@ public class VoiceGenerator {
             return new AbstractMap.SimpleEntry<>(voiceType, response.getKey());
         }
         player.setPlayBackListener(new CustomPlaybackListener());
-        if (isAlreadySpeaking()) {
-            while (isAlreadySpeaking()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        } else startedSpeaking();
-        ResponseProcess rp = new ResponseProcess();
-        CompletableFuture.runAsync(() -> {
-            logger.debug("Using standard voice: {}", currentVoice);
-            long start = System.currentTimeMillis();
+        while (isSpeaking()) {
             try {
-                player.play();
-            } catch (JavaLayerException e) {
-                logger.warn("Exception while playing normal voice!");
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-            logger.debug("Finished speaking in {}ms", System.currentTimeMillis() - start);
-            try {
-                finishedSpeaking();
-                rp.setFinished();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+        }
+        logger.debug("Using standard voice: {}", currentVoice);
+        try {
+            player.play();
+        } catch (JavaLayerException e) {
+            logger.warn("Exception while playing normal voice!");
+        }
+        try {
+            finishedSpeaking();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         return new AbstractMap.SimpleEntry<>(voiceType, response.getKey());
     }
 

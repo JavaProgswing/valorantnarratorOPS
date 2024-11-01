@@ -7,6 +7,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -21,6 +22,7 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class ValNarratorApplication extends Application {
@@ -56,6 +58,21 @@ public class ValNarratorApplication extends Application {
         alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
         Toolkit.getDefaultToolkit().beep();
         alert.showAndWait();
+    }
+
+    public static boolean showConfirmationAlertAndWait(String headerText, String contentText) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Valorant Narrator");
+        alert.setHeaderText(headerText);
+        alert.setContentText(contentText);
+
+        ButtonType yesButton = new ButtonType("Yes");
+        ButtonType noButton = new ButtonType("No");
+        alert.getButtonTypes().setAll(yesButton, noButton);
+
+        Optional<ButtonType> result = alert.showAndWait();
+
+        return (result.isPresent() && result.get() == yesButton);
     }
 
     @Override

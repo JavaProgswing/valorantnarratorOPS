@@ -26,13 +26,13 @@ import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
 import static com.jprcoder.valnarratorbackend.APIHandler.*;
+import static com.jprcoder.valnarratorbackend.RiotUtilityHandler.isValorantRunning;
 import static com.jprcoder.valnarratorbackend.SerialGenerator.getSerialNumber;
 
 public class Main {
@@ -176,7 +176,7 @@ public class Main {
         logger.info("Detected normal start-up, launching application!");
         RegistrationInfo ri;
         try {
-            ri = fetchRegistrationInfo();
+            ri = fetchRegistrationInfo(1, 3);
         } catch (com.google.gson.JsonSyntaxException | IOException e) {
             logger.error("CRITICAL: API is down!");
             return;
@@ -206,27 +206,6 @@ public class Main {
             }
         }
         Application.launch(ValNarratorApplication.class, args);
-    }
-
-    private static boolean isValorantRunning() {
-        String findProcess = "VALORANT.exe";
-        String filenameFilter = "/nh /fi \"Imagename eq " + findProcess + "\"";
-        String tasksCmd = System.getenv("windir") + "/system32/tasklist.exe " + filenameFilter;
-        Process p;
-        ArrayList<String> procs;
-        try {
-            p = Runtime.getRuntime().exec(tasksCmd);
-            BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            procs = new ArrayList<>();
-            String line;
-            while ((line = input.readLine()) != null) procs.add(line);
-
-            input.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return procs.stream().anyMatch(row -> row.contains(findProcess));
     }
 
     public static char[] getSecretKey() {

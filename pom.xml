@@ -6,7 +6,7 @@
 
     <groupId>com.jprcoder</groupId>
     <artifactId>ValorantNarrator</artifactId>
-    <version>3.6</version>
+    <version>3.7</version>
     <name>ValorantNarrator</name>
 
     <properties>
@@ -211,6 +211,48 @@
 
                                 <argument>-mask</argument>
                                 <argument>ICONGROUP,MAINICON,</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-githubOPS-changes</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>cmd.exe</executable>
+                            <arguments>
+                                <argument>/k</argument>
+                                <argument>xcopy</argument>
+                                <argument>/f</argument>
+                                <argument>/s</argument>
+                                <argument>/y</argument>
+                                <argument>${project.basedir}\src</argument>
+                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarratorOPS\src\</argument>
+                                <argument>&amp;&amp;</argument>
+                                <argument>exit</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-githubOPS-changes-1</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>cmd.exe</executable>
+                            <arguments>
+                                <argument>/k</argument>
+                                <argument>xcopy</argument>
+                                <argument>/f</argument>
+                                <argument>/s</argument>
+                                <argument>/y</argument>
+                                <argument>${project.basedir}\pom.xml</argument>
+                                    <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarratorOPS\pom.xml</argument>
+                                <argument>&amp;&amp;</argument>
+                                <argument>exit</argument>
                             </arguments>
                         </configuration>
                     </execution>

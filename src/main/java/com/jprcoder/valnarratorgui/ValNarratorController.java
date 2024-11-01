@@ -22,14 +22,13 @@ import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Locale;
-import java.util.ResourceBundle;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
+import static com.jprcoder.valnarratorbackend.RiotUtilityHandler.isValorantRunning;
 import static com.jprcoder.valnarratorgui.ValNarratorApplication.*;
 
 interface XMPPEventDispatcher {
@@ -103,8 +102,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
     private boolean isVoicesVisible = false;
 
     private boolean selectingKeybind = false;
-    private String lastAddIgnoredPlayerSelectionString, lastRemovedIgnoredPlayerSelectionString;
-
     public ValNarratorController() {
         latestInstance = this;
     }
@@ -304,11 +301,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
         rateSlider.valueProperty().addListener((observable, oldValue, newValue) -> VoiceGenerator.setCurrentRate(newValue.shortValue()));
     }
 
-    public void switchLanguage(String langCode) {
-        Locale locale = new Locale(langCode);
-        ResourceBundle bundle = ResourceBundle.getBundle("messages", locale);
-    }
-
     public void disableRateSlider() {
         rateSlider.setDisable(true);
     }
@@ -466,6 +458,13 @@ public class ValNarratorController implements XMPPEventDispatcher {
         }
         if (event.getTarget() == btnPower) {
             if (ChatDataHandler.getInstance().getProperties().toggleState()) {
+                if (!isValorantRunning()) {
+                    if (showConfirmationAlertAndWait("Confirmation", "Valorant isn't running, do you want to close this app?")) {
+                        logger.info("Exiting app due to popup confirmation.");
+                        System.exit(0);
+                        return;
+                    }
+                }
                 if (panelInfo.isVisible()) lastAnchorPane = panelInfo;
                 else if (panelUser.isVisible()) lastAnchorPane = panelUser;
                 else if (panelSettings.isVisible()) lastAnchorPane = panelSettings;

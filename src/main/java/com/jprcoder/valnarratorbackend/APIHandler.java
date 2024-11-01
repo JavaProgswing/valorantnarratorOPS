@@ -72,7 +72,10 @@ public class APIHandler {
         return new Gson().fromJson(responseBody, VersionInfo.class);
     }
 
-    public static RegistrationInfo fetchRegistrationInfo() throws IOException, InterruptedException, OutdatedVersioningException {
+    public static RegistrationInfo fetchRegistrationInfo(int currentCount, int retryCount) throws IOException, InterruptedException, OutdatedVersioningException {
+        if (currentCount > retryCount) {
+            throw new IOException("Authorization failed!");
+        }
         HttpClient client = HttpClient.newHttpClient();
         Signature sign = SignatureValidator.generateRegistrationSignature(serialNumber);
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/register?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
@@ -88,6 +91,10 @@ public class APIHandler {
         }
         if (response.statusCode() == 426) {
             throw new OutdatedVersioningException();
+        }
+        if (response.statusCode() == 401) {
+            logger.debug("Unauthorized request, retrying... x{}", currentCount);
+            return fetchRegistrationInfo(currentCount + 1, retryCount);
         }
         return new RegistrationInfo(true, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
     }
@@ -333,9 +340,9 @@ public class APIHandler {
         HttpResponse<String> response;
         response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
-        final String responseBody = response.body().replace("\"","");
+        final String responseBody = response.body().replace("\"", "");
         logger.debug(responseBody);
-        if (response.statusCode() == 503) {
+        if (response.statusCode() == 503 || response.statusCode() == 504) {
             ValNarratorApplication.showAlert("Server Error!", "Custom voices is currently down, please try again later.");
             ValNarratorController.getLatestInstance().revertVoiceSelection();
             return new AbstractMap.SimpleEntry<>(response, null);
