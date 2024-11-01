@@ -250,7 +250,8 @@
                                 <argument>/s</argument>
                                 <argument>/y</argument>
                                 <argument>${project.basedir}\pom.xml</argument>
-                                    <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarratorOPS\pom.xml</argument>
+                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarratorOPS\pom.xml
+                                </argument>
                                 <argument>&amp;&amp;</argument>
                                 <argument>exit</argument>
                             </arguments>
