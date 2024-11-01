@@ -57,7 +57,7 @@ public class Main {
         try {
             Encryption.encrypt(signature, Paths.get(CONFIG_DIR, "secretSign.bin").toString());
         } catch (IOException e) {
-            ValNarratorApplication.showPreStartupDialog("Could not initialize app properly, try again with administrator!", "Not Registered", MessageType.fromInt(JOptionPane.ERROR_MESSAGE));
+            ValNarratorApplication.showPreStartupDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.fromInt(JOptionPane.ERROR_MESSAGE));
             System.exit(-1);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
@@ -66,7 +66,7 @@ public class Main {
         try {
             Encryption.encrypt(salt, Paths.get(CONFIG_DIR, "secretSalt.bin").toString());
         } catch (IOException e) {
-            ValNarratorApplication.showPreStartupDialog("Could not initialize app properly, try again with administrator!", "Not Registered", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showPreStartupDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
             System.exit(-1);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
@@ -83,7 +83,7 @@ public class Main {
             FileLock lock = randomAccessFile.getChannel().tryLock();
             if (lock == null) {
                 randomAccessFile.close();
-                ValNarratorApplication.showPreStartupDialog("Another instance of this application is already running!", "App", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                ValNarratorApplication.showPreStartupDialog("App", "Another instance of this application is already running!", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
                 System.exit(0);
             }
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -137,7 +137,7 @@ public class Main {
                 }
                 System.exit(0);
             });
-            ValNarratorApplication.showPreStartupDialog(String.format("ValorantNarrator v-%1$,.2f has been downloaded, restart the system for finishing the installation!", currentVersion), "Installation", MessageType.fromInt(JOptionPane.INFORMATION_MESSAGE));
+            ValNarratorApplication.showPreStartupDialog("Installation", String.format("ValorantNarrator v-%1$,.2f has been downloaded, restart the system for finishing the installation!", currentVersion), MessageType.fromInt(JOptionPane.INFORMATION_MESSAGE));
         }
 
         logger.info(String.format("Starting Valorant-Narrator on v-%1$,.2f", currentVersion));
