@@ -79,6 +79,7 @@
                     <String fx:value="Skye, VALORANT"/>
                     <String fx:value="Sova, VALORANT"/>
                     <String fx:value="Viper, VALORANT"/>
+                    <String fx:value="Vyse, VALORANT"/>
                     <String fx:value="Yoru, VALORANT"/>
                 </FXCollections>
             </items>

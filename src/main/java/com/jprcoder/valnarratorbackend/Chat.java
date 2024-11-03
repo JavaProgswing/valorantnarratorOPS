@@ -10,10 +10,19 @@ public class Chat {
     private final ArrayList<String> ignoredPlayerIDs = new ArrayList<>();
     private long messagesSent, charactersSent;
     private boolean selfState = true, privateState, partyState, teamState, allState, isDisabled;
+    private boolean isQuotaExhausted;
     private String selfID;
 
     public Chat(int quotaLimit) {
         this.quotaLimit = quotaLimit;
+    }
+
+    public void markQuotaExhausted() {
+        isQuotaExhausted = true;
+    }
+
+    public boolean isQuotaExhausted() {
+        return isQuotaExhausted;
     }
 
     public ArrayList<String> getIgnoredPlayerIDs() {

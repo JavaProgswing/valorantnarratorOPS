@@ -2,8 +2,6 @@ package com.jprcoder.valnarratorbackend;
 
 import com.jprcoder.valnarratorgui.ValNarratorApplication;
 import com.jprcoder.valnarratorgui.ValNarratorController;
-import javafx.application.Platform;
-import javafx.scene.paint.Color;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +32,7 @@ public class VoiceTokenHandler {
                     logger.warn(String.format("Failed to refresh token: %s", e.getMessage()));
                 } catch (QuotaExhaustedException e) {
                     logger.warn(String.format("Quota exhausted, %s", e.getMessage()));
-                    Platform.runLater(() -> {
-                        ValNarratorController.getLatestInstance().quotaLabel.setText(String.format("Quota Exhausted, %s!", e.getMessage()));
-                        ValNarratorController.getLatestInstance().quotaLabel.setTextFill(Color.RED);
-                        ValNarratorController.getLatestInstance().quotaBar.setProgress(0.0);
-                    });
+                    ValNarratorController.getLatestInstance().markQuotaExhausted();
                     try {
                         Thread.sleep(TOKEN_EXPIRATION_TIME * 1000);
                     } catch (InterruptedException e1) {

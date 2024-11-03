@@ -4,7 +4,6 @@ import com.jprcoder.valnarratorgui.Main;
 import com.jprcoder.valnarratorgui.ValNarratorApplication;
 import com.jprcoder.valnarratorgui.ValNarratorController;
 import javafx.application.Platform;
-import javafx.scene.paint.Color;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +111,7 @@ public class ChatDataHandler {
             ValNarratorController.getLatestInstance().setMessagesSent(properties.getMessagesSent());
             ValNarratorController.getLatestInstance().setCharactersNarrated(properties.getCharactersSent());
         });
-        final String finalBody = message.getContent();
+        final String finalBody = message.getContent().replace("/", "").replace("\\", "");
         CompletableFuture.runAsync(() -> {
             try {
                 VoiceGenerator.getInstance().speakVoice(expandShortForms(finalBody));
@@ -120,11 +119,7 @@ public class ChatDataHandler {
                 logger.warn(String.format("Failed to narrate message: %s", e.getMessage()));
             } catch (QuotaExhaustedException e) {
                 logger.warn(String.format("Quota exhausted, %s", e.getMessage()));
-                Platform.runLater(() -> {
-                    ValNarratorController.getLatestInstance().quotaLabel.setText(String.format("Quota Exhausted, %s!", e.getMessage()));
-                    ValNarratorController.getLatestInstance().quotaLabel.setTextFill(Color.RED);
-                    ValNarratorController.getLatestInstance().quotaBar.setProgress(0.0);
-                });
+                ValNarratorController.getLatestInstance().markQuotaExhausted();
             } catch (OutdatedVersioningException e) {
                 ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
                 throw new RuntimeException(e);

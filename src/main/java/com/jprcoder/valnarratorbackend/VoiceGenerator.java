@@ -179,6 +179,11 @@ public class VoiceGenerator {
             }
             ValNarratorController.getLatestInstance().disableRateSlider();
         } else {
+            if(ChatDataHandler.getInstance().getProperties().isQuotaExhausted() && voiceType == VoiceType.STANDARD){
+                ValNarratorController.getLatestInstance().revertVoiceSelection();
+                showAlert("Quota Exhausted", "Your quota has been exhausted, please wait for the next refresh to continue using this voice!");
+                return false;
+            }
             ValNarratorController.getLatestInstance().enableRateSlider();
         }
         currentVoice = filterVoiceName(voice);

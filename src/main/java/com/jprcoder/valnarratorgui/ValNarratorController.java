@@ -12,7 +12,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.paint.Color;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,6 +101,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
     private boolean isVoicesVisible = false;
 
     private boolean selectingKeybind = false;
+
     public ValNarratorController() {
         latestInstance = this;
     }
@@ -176,27 +176,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
         } catch (IOException e) {
             logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
         }
-        try {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            long pid = ProcessHandle.current().pid();
-            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start)));
-            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start)));
-            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
-        } catch (IOException e) {
-            logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
-        }
-        /*
-        Executing 2 times to prevent the Cable-INPUT bug.
-         */
         logger.info("Initialized app's sound output.");
         logger.info("Initializing xmpp-node.");
         try {
@@ -375,14 +354,33 @@ public class ValNarratorController implements XMPPEventDispatcher {
         voices.getSelectionModel().select(previousSelection);
     }
 
+    public void markQuotaExhausted() {
+        CompletableFuture.runAsync(() -> {
+            while (ChatDataHandler.getInstance() == null) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            ChatDataHandler.getInstance().getProperties().markQuotaExhausted();
+        });
+        Platform.runLater(() -> {
+            ValNarratorController.getLatestInstance().quotaLabel.setText("Quota Exhausted!");
+            ValNarratorController.getLatestInstance().quotaBar.setProgress(0.0);
+            ValNarratorController.getLatestInstance().setPremiumDateLabel("No");
+            try {
+                voices.getSelectionModel().select(String.format("%s, INBUILT", VoiceGenerator.getInbuiltVoices().get(0)));
+                ValNarratorApplication.showAlert("Quota Exhausted!", "An inbuilt voice has been automatically selected.");
+            } catch (IndexOutOfBoundsException e) {
+                ValNarratorApplication.showAlert("Quota Exhausted!", "Please try again later at 00:00 UTC.");
+            }
+        });
+    }
+
     public void updateRequestQuota(MessageQuota mq) {
         if (mq.remainingQuota() <= 0) {
-            Platform.runLater(() -> {
-                ValNarratorController.getLatestInstance().quotaLabel.setText("Quota Exhausted!");
-                ValNarratorController.getLatestInstance().quotaLabel.setTextFill(Color.RED);
-                ValNarratorController.getLatestInstance().quotaBar.setProgress(0.0);
-                ValNarratorController.getLatestInstance().setPremiumDateLabel("No");
-            });
+            markQuotaExhausted();
         } else {
             if (mq.isPremium()) {
                 Platform.runLater(() -> {
