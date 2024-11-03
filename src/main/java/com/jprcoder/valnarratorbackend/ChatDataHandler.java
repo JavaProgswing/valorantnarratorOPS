@@ -17,7 +17,7 @@ import static com.jprcoder.valnarratorbackend.ChatUtilityHandler.expandShortForm
 import static com.jprcoder.valnarratorbackend.ChatUtilityHandler.getPlayerName;
 
 public class ChatDataHandler {
-    public static final Logger logger = LoggerFactory.getLogger(ChatDataHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(ChatDataHandler.class);
     private static final ChatDataHandler singleton;
 
     static {

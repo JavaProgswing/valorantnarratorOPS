@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 public class VoiceTokenHandler {
-    public static final Logger logger = LoggerFactory.getLogger(VoiceTokenHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(VoiceTokenHandler.class);
     private static final int TOKEN_EXPIRATION_TIME = 895;
     private static long LAST_REFRESH_MS = 0;
     private final APIHandler apiHandler;

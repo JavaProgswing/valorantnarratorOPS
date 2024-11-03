@@ -37,7 +37,7 @@ record SettingsData(String data, String type) {
 }
 
 public class APIHandler {
-    public static final Logger logger = LoggerFactory.getLogger(APIHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(APIHandler.class);
     private static final String valAPIUrl = "https://api-valnarrator.vercel.app";
     private final ConnectionHandler connectionHandler;
     private boolean isPremium = false;
