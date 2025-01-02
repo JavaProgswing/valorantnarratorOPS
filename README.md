@@ -18,7 +18,7 @@ Discord: https://discord.gg/RWP25YQDcf
 - **Premium**: Unlock unlimited messages and access to all features for just $2 per month.
 
 ## Demo
-Check out our demo on [YouTube](https://www.youtube.com/watch?v=-pZSmC4mX3I) to see it in action and level up your Valorant gameplay!
+Check out our demo on [YouTube](https://www.youtube.com/watch?v=Z_Dw7sJKL0A) to see it in action and level up your Valorant gameplay!
 
 [![Watch the demo](https://img.youtube.com/vi/-pZSmC4mX3I/0.jpg)](https://www.youtube.com/watch?v=-pZSmC4mX3I)
 
