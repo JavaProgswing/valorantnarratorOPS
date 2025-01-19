@@ -9,7 +9,7 @@
 <?import javafx.scene.text.*?>
 <?import java.lang.*?>
 <AnchorPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="614.0" prefWidth="377.0"
-            style="-fx-background-color: transparent;" xmlns="http://javafx.com/javafx/21"
+            style="-fx-background-color: transparent;" xmlns="http://javafx.com/javafx/17.0.2-ea"
             fx:controller="com.jprcoder.valnarratorgui.ValNarratorController">
     <AnchorPane fx:id="topBar" prefHeight="55.0" prefWidth="377.0" style="-fx-background-color: #1C2C3C;">
         <ImageView fx:id="btnUser" fitHeight="38.0" fitWidth="32.0" layoutX="124.0" layoutY="13.0"
@@ -75,6 +75,7 @@
                     <String fx:value="Phoenix, VALORANT"/>
                     <String fx:value="Raze, VALORANT"/>
                     <String fx:value="Reyna, VALORANT"/>
+                    <String fx:value="Tejo, VALORANT"/>
                     <String fx:value="Sage, VALORANT"/>
                     <String fx:value="Skye, VALORANT"/>
                     <String fx:value="Sova, VALORANT"/>

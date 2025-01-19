@@ -6,7 +6,7 @@
 
     <groupId>com.jprcoder</groupId>
     <artifactId>ValorantNarrator</artifactId>
-    <version>3.81</version>
+    <version>3.82</version>
     <name>ValorantNarrator</name>
 
     <properties>
@@ -122,7 +122,8 @@
                                 <argument>addskip</argument>
 
                                 <argument>-res</argument>
-                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\app.ico</argument>
+                                <argument>C:\Users\yashasvi\Documents\ValorantNarrator\ValorantNarrator\app.ico
+                                </argument>
 
                                 <argument>-mask</argument>
                                 <argument>ICONGROUP,MAINICON,</argument>
@@ -187,7 +188,7 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>rcedit-execution</id>
+                        <id>rcedit-execution-2</id>
                         <phase>package</phase>
                         <goals>
                             <goal>exec</goal>
@@ -200,14 +201,15 @@
 
                                 <argument>-save</argument>
                                 <argument>
-                                    C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\${project.artifactId}.exe
+                                    C:\Users\yashasvi\Documents\ValorantNarrator\ValorantNarrator\${project.artifactId}.exe
                                 </argument>
 
                                 <argument>-action</argument>
                                 <argument>addskip</argument>
 
                                 <argument>-res</argument>
-                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarrator\app.ico</argument>
+                                <argument>C:\Users\yashasvi\Documents\ValorantNarrator\ValorantNarrator\app.ico
+                                </argument>
 
                                 <argument>-mask</argument>
                                 <argument>ICONGROUP,MAINICON,</argument>
@@ -229,7 +231,8 @@
                                 <argument>/s</argument>
                                 <argument>/y</argument>
                                 <argument>${project.basedir}\src</argument>
-                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarratorOPS\src\</argument>
+                                <argument>C:\Users\yashasvi\Documents\ValorantNarrator\ValorantNarratorOPS\src\
+                                </argument>
                                 <argument>&amp;&amp;</argument>
                                 <argument>exit</argument>
                             </arguments>
@@ -250,7 +253,7 @@
                                 <argument>/s</argument>
                                 <argument>/y</argument>
                                 <argument>${project.basedir}\pom.xml</argument>
-                                <argument>C:\Users\yasha\Documents\ValorantNarrator\ValorantNarratorOPS\pom.xml
+                                <argument>C:\Users\yashasvi\Documents\ValorantNarrator\ValorantNarratorOPS\pom.xml
                                 </argument>
                                 <argument>&amp;&amp;</argument>
                                 <argument>exit</argument>
