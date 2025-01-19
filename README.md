@@ -1,4 +1,5 @@
 # Valorant Narrator App - Open Sourced
+![image](https://github.com/user-attachments/assets/6b8f9c86-8b59-4917-9f98-97eb924456c9)
 
 Introducing our innovative app that transforms Valorant game chat messages into real-time party and team voice communication, offering a unique gaming experience like never before. With customizable voices, including the authentic in-game agent voices from Valorant, our app adds an immersive layer to your gameplay. Imagine your favorite agent communicating your strategy or witty remarks directly through your mic.
 
@@ -17,7 +18,7 @@ Discord: https://discord.gg/RWP25YQDcf
 - **Premium**: Unlock unlimited messages and access to all features for just $2 per month.
 
 ## Demo
-Check out our demo on [YouTube](https://www.youtube.com/watch?v=-pZSmC4mX3I) to see it in action and level up your Valorant gameplay!
+Check out our demo on [YouTube](https://www.youtube.com/watch?v=Z_Dw7sJKL0A) to see it in action and level up your Valorant gameplay!
 
 [![Watch the demo](https://img.youtube.com/vi/-pZSmC4mX3I/0.jpg)](https://www.youtube.com/watch?v=-pZSmC4mX3I)
 
