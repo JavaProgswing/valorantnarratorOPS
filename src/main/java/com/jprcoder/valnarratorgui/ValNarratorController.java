@@ -197,6 +197,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                             line = line.replace(">", "").replace("<", "");
                             logger.debug("Received from socket: " + line);
 
+                            if (ChatDataHandler.getInstance().getProperties().getMucID() == null) continue;
                             final String xml = ChatDataHandler.getInstance().getSentMessageXML(line);
                             logger.debug("Sending to xmpp-node: " + xml);
                             processWriter.write(xml);
@@ -289,6 +290,15 @@ public class ValNarratorController implements XMPPEventDispatcher {
         } catch (IOException e) {
             logger.error("Running Xmpp-Node generated an error: ");
             e.printStackTrace();
+        }
+        logger.info("Initializing transcript.");
+        try {
+            final String xmppPath = String.format("%s/ValorantNarrator/trancript.exe", System.getenv("ProgramFiles").replace("\\", "/"));
+            ProcessBuilder processBuilder = new ProcessBuilder(xmppPath);
+            processBuilder.redirectErrorStream(true);
+            processBuilder.start();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
         logger.info(String.format("Initialization completed in %d ms.", System.currentTimeMillis() - appStart));
 
