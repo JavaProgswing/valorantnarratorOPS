@@ -283,6 +283,7 @@ public class VoiceGenerator {
                 i--;
             }
         }
+        System.out.println(settingsJson);
         apiHandler.setEncodedPlayerSettings(accessToken, riotClientDetails.version(), ZlibCompression.deflateAndBase64Encode(settingsJson.toString()));
 
         String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));

@@ -1,10 +1,14 @@
 package com.jprcoder.valnarratorbackend;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Message {
+    private static final Logger logger = LoggerFactory.getLogger(Message.class);
     private final String content;
     private final String id;
     private final String userId;
@@ -12,6 +16,7 @@ public class Message {
     private final MessageType messageType;
 
     public Message(String xml) {
+        logger.debug(xml);
         Pattern typePattern = Pattern.compile("type='(.*?)'");
         Pattern bodyPattern = Pattern.compile("<body>(.*?)</body>");
         Pattern jidPattern = Pattern.compile("jid='(.*?)'");

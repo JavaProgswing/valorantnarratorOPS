@@ -15,9 +15,9 @@ import javafx.scene.layout.AnchorPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -183,6 +183,32 @@ public class ValNarratorController implements XMPPEventDispatcher {
             ProcessBuilder processBuilder = new ProcessBuilder(xmppPath);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
+
+            BufferedWriter processWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+
+            CompletableFuture.runAsync(() -> {
+                try (ServerSocket serverSocket = new ServerSocket(35480)) {
+                    logger.info("Listening on localhost:35480 for input to Xmpp-Node");
+                    while (true) {
+                        Socket clientSocket = serverSocket.accept();
+                        BufferedReader socketReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                        String line;
+                        while ((line = socketReader.readLine()) != null) {
+                            line = line.replace(">", "").replace("<", "");
+                            logger.debug("Received from socket: " + line);
+
+                            final String xml = ChatDataHandler.getInstance().getSentMessageXML(line);
+                            logger.debug("Sending to xmpp-node: " + xml);
+                            processWriter.write(xml);
+                            processWriter.newLine();
+                            processWriter.flush();
+                        }
+                        clientSocket.close();
+                    }
+                } catch (IOException e) {
+                    logger.error("Socket server failed: ", e);
+                }
+            });
             CompletableFuture.runAsync(() -> {
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line;
@@ -222,8 +248,31 @@ public class ValNarratorController implements XMPPEventDispatcher {
                                     Message msg = new Message(xml);
                                     logger.info(String.format("Received message: %s", msg));
                                     ChatDataHandler.getInstance().message(msg);
+                                    //<message id="1745268795434:1" to="e0da59fd-266d-4022-9dab-16e189dda809@ares-parties.jp1.pvp.net" type="groupchat"><body>yo teaaaam</body></message>
+                                    //<message id="1745268831981:2" to="e0da59fd-266d-4022-9dab-16e189dda809@ares-parties.jp1.pvp.net" type="groupchat"><body>yo teaaaam</body></message>
                                 }
                             } else {
+                                final String xml = event.data();
+                                if (xml.startsWith("<message")) {
+                                    logger.debug(String.format("Sent: %s", xml));
+                                    ChatDataHandler.getInstance().getProperties().incrementSelfMessagesSent();
+                                }
+
+                                if (xml.startsWith("<presence")) {
+                                    logger.debug(String.format("Sent presence: %s", xml));
+
+                                    Pattern idPattern = Pattern.compile("id='(.*?)'");
+                                    Matcher idMatcher = idPattern.matcher(xml.replace("\"", "'"));
+                                    String id = idMatcher.find() ? idMatcher.group(1) : null;
+
+                                    Pattern toPattern = Pattern.compile("to='(.*?)'");
+                                    Matcher toMatcher = toPattern.matcher(xml.replace("\"", "'"));
+                                    String to = toMatcher.find() ? toMatcher.group(1) : null;
+                                    if (id != null && id.startsWith("join_muc_") && to != null) {
+                                        ChatDataHandler.getInstance().getProperties().setMucID(to.substring(0, to.indexOf('/')));
+                                    }
+                                }
+
                                 if (event.type().equals("close-riot") || event.type().equals("close-valorant")) {
                                     ValNarratorApplication.showAlert("Warning", "Valorant or Riot client has been closed, application will close in 5 seconds.");
                                     Thread.sleep(5000);

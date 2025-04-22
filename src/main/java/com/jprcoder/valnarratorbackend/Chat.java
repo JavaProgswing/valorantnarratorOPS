@@ -8,13 +8,21 @@ public class Chat {
     private final Hashtable<String, String> playerIDs = new Hashtable<>();
     private final Hashtable<String, String> playerNames = new Hashtable<>();
     private final ArrayList<String> ignoredPlayerIDs = new ArrayList<>();
-    private long messagesSent, charactersSent;
+    private long selfMessagesSent, messagesSent, charactersSent;
     private boolean selfState = true, privateState, partyState, teamState, allState, isDisabled;
     private boolean isQuotaExhausted;
-    private String selfID;
+    private String selfID, MucID;
 
     public Chat(int quotaLimit) {
         this.quotaLimit = quotaLimit;
+    }
+
+    public void incrementSelfMessagesSent() {
+        selfMessagesSent++;
+    }
+
+    public long getSelfMessagesSent() {
+        return selfMessagesSent;
     }
 
     public void markQuotaExhausted() {
@@ -72,6 +80,14 @@ public class Chat {
 
     public void setSelfID(String selfID) {
         this.selfID = selfID;
+    }
+
+    public String getMucID() {
+        return MucID;
+    }
+
+    public void setMucID(final String MucID) {
+        this.MucID = MucID;
     }
 
     public boolean toggleState() {

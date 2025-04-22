@@ -12,7 +12,8 @@ module ValorantNarrator {
     requires javafx.graphics;
     requires org.slf4j;
     requires java.naming; // Missing logback dependency
-    requires jdk.crypto.ec; // For SSL HttpClient before Java version 22
+    requires jdk.crypto.ec;
+
     exports com.jprcoder.valnarratorgui to javafx.graphics, javafx.fxml;
     opens com.jprcoder.valnarratorgui to javafx.fxml;
     opens com.jprcoder.valnarratorbackend to com.google.gson;

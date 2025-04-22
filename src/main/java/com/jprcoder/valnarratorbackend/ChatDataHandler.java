@@ -72,6 +72,10 @@ public class ChatDataHandler {
         APIHandler.setPremium(mq.isPremium());
     }
 
+    public String getSentMessageXML(final String messageContent) {
+        return String.format("<message id=\"%d:%d\" to=\"%s\" type=\"groupchat\"><body>%s</body></message>", System.currentTimeMillis(), ChatDataHandler.getInstance().getProperties().getSelfMessagesSent() + 1, ChatDataHandler.getInstance().getProperties().getMucID(), messageContent);
+    }
+
     public void message(Message message) {
         if (properties.isDisabled()) {
             logger.info("Valorant Narrator disabled, ignoring message!");
