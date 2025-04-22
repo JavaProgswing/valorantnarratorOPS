@@ -194,7 +194,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
                         BufferedReader socketReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                         String line;
                         while ((line = socketReader.readLine()) != null) {
-                            line = line.replace(">", "").replace("<", "");
                             logger.debug("Received from socket: " + line);
 
                             if (ChatDataHandler.getInstance().getProperties().getMucID() == null) continue;
@@ -249,8 +248,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
                                     Message msg = new Message(xml);
                                     logger.info(String.format("Received message: %s", msg));
                                     ChatDataHandler.getInstance().message(msg);
-                                    //<message id="1745268795434:1" to="e0da59fd-266d-4022-9dab-16e189dda809@ares-parties.jp1.pvp.net" type="groupchat"><body>yo teaaaam</body></message>
-                                    //<message id="1745268831981:2" to="e0da59fd-266d-4022-9dab-16e189dda809@ares-parties.jp1.pvp.net" type="groupchat"><body>yo teaaaam</body></message>
                                 }
                             } else {
                                 final String xml = event.data();
@@ -260,8 +257,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
                                 }
 
                                 if (xml.startsWith("<presence")) {
-                                    logger.debug(String.format("Sent presence: %s", xml));
-
                                     Pattern idPattern = Pattern.compile("id='(.*?)'");
                                     Matcher idMatcher = idPattern.matcher(xml.replace("\"", "'"));
                                     String id = idMatcher.find() ? idMatcher.group(1) : null;
@@ -271,6 +266,10 @@ public class ValNarratorController implements XMPPEventDispatcher {
                                     String to = toMatcher.find() ? toMatcher.group(1) : null;
                                     if (id != null && id.startsWith("join_muc_") && to != null) {
                                         ChatDataHandler.getInstance().getProperties().setMucID(to.substring(0, to.indexOf('/')));
+
+                                        Thread.sleep(2000);
+                                        processWriter.write(xml);
+                                        processWriter.flush();
                                     }
                                 }
 
@@ -290,15 +289,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
         } catch (IOException e) {
             logger.error("Running Xmpp-Node generated an error: ");
             e.printStackTrace();
-        }
-        logger.info("Initializing transcript.");
-        try {
-            final String xmppPath = String.format("%s/ValorantNarrator/trancript.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            ProcessBuilder processBuilder = new ProcessBuilder(xmppPath);
-            processBuilder.redirectErrorStream(true);
-            processBuilder.start();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
         logger.info(String.format("Initialization completed in %d ms.", System.currentTimeMillis() - appStart));
 

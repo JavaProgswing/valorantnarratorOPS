@@ -16,7 +16,6 @@ public class Message {
     private final MessageType messageType;
 
     public Message(String xml) {
-        logger.debug(xml);
         Pattern typePattern = Pattern.compile("type='(.*?)'");
         Pattern bodyPattern = Pattern.compile("<body>(.*?)</body>");
         Pattern jidPattern = Pattern.compile("jid='(.*?)'");
