@@ -30,6 +30,7 @@ public class ChatDataHandler {
 
     private final Chat properties;
     private final APIHandler APIHandler;
+    private String previousChatMessage;
 
     private ChatDataHandler() throws NoSuchAlgorithmException, KeyManagementException, IOException {
         ConnectionHandler connectionHandler = new ConnectionHandler();
@@ -85,6 +86,11 @@ public class ChatDataHandler {
             logger.info(String.format("Ignoring message from %s!", properties.getPlayerIDTable().get(message.getUserId())));
             return;
         }
+
+        if (message.getContent().equals(previousChatMessage)) {
+            return;
+        }
+        previousChatMessage = message.getContent();
 
         if (message.getMessageType() == MessageType.WHISPER && !properties.isPrivateState()) {
             logger.info("Private messages disabled, ignoring message!");
