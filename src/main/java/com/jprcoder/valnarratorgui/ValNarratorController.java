@@ -16,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -185,30 +183,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
             Process process = processBuilder.start();
 
             BufferedWriter processWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
-
-            CompletableFuture.runAsync(() -> {
-                try (ServerSocket serverSocket = new ServerSocket(35480)) {
-                    logger.info("Listening on localhost:35480 for input to Xmpp-Node");
-                    while (true) {
-                        Socket clientSocket = serverSocket.accept();
-                        BufferedReader socketReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        String line;
-                        while ((line = socketReader.readLine()) != null) {
-                            logger.debug("Received from socket: " + line);
-
-                            if (ChatDataHandler.getInstance().getProperties().getMucID() == null) continue;
-                            final String xml = ChatDataHandler.getInstance().getSentMessageXML(line);
-                            logger.debug("Sending to xmpp-node: " + xml);
-                            processWriter.write(xml);
-                            processWriter.newLine();
-                            processWriter.flush();
-                        }
-                        clientSocket.close();
-                    }
-                } catch (IOException e) {
-                    logger.error("Socket server failed: ", e);
-                }
-            });
             CompletableFuture.runAsync(() -> {
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line;

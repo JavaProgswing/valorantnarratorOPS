@@ -88,6 +88,7 @@ public class ChatDataHandler {
         }
 
         if (message.getContent().equals(previousChatMessage)) {
+            logger.info("Duplicate message detected, ignoring!");
             return;
         }
         previousChatMessage = message.getContent();
