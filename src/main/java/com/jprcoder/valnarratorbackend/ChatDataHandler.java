@@ -110,18 +110,7 @@ public class ChatDataHandler {
             logger.info("All messages disabled, ignoring message!");
             return;
         }
-        if (!properties.getPlayerIDTable().containsKey(message.getUserId())) {
-            final String playerID = message.getUserId(), playerName = getPlayerName(playerID).trim();
-            properties.getPlayerIDTable().put(playerID, playerName);
-            properties.getPlayerNameTable().put(playerName, playerID);
-            ValNarratorController.getLatestInstance().addIgnoredPlayer.getItems().addAll(playerName);
-        }
 
-        properties.updateMessageStats(message);
-        Platform.runLater(() -> {
-            ValNarratorController.getLatestInstance().setMessagesSent(properties.getMessagesSent());
-            ValNarratorController.getLatestInstance().setCharactersNarrated(properties.getCharactersSent());
-        });
         final String finalBody = message.getContent().replace("/", "").replace("\\", "");
         CompletableFuture.runAsync(() -> {
             try {
@@ -136,6 +125,18 @@ public class ChatDataHandler {
                 throw new RuntimeException(e);
             }
         });
+        properties.updateMessageStats(message);
+        Platform.runLater(() -> {
+            ValNarratorController.getLatestInstance().setMessagesSent(properties.getMessagesSent());
+            ValNarratorController.getLatestInstance().setCharactersNarrated(properties.getCharactersSent());
+        });
+
+        if (!properties.getPlayerIDTable().containsKey(message.getUserId())) {
+            final String playerID = message.getUserId(), playerName = getPlayerName(playerID).trim();
+            properties.getPlayerIDTable().put(playerID, playerName);
+            properties.getPlayerNameTable().put(playerName, playerID);
+            ValNarratorController.getLatestInstance().addIgnoredPlayer.getItems().addAll(playerName);
+        }
     }
 
     public void updateQuota(final int remainingQuota) {

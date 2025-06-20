@@ -259,8 +259,9 @@ public class APIHandler {
 
     public ArrayList<PlayerAccount> getPlayerNames(final String accessToken, final RiotClientDetails riotClientDetails, final String entitlementToken, final ArrayList<String> playerIDs) {
         final Gson gson = new Gson();
+        logger.debug("Fetching player names for player IDs: {}", playerIDs);
         HttpRequest playerReq = HttpRequest.newBuilder().uri(URI.create(String.format("https://pd.%s.a.pvp.net/name-service/v2/players", riotClientDetails.subject_deployment()))).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-Entitlements-JWT", entitlementToken).header("X-Riot-ClientVersion", riotClientDetails.version()).PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(playerIDs))).build();
-
+        logger.debug(String.valueOf(playerReq));
         HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), playerReq, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
