@@ -49,7 +49,11 @@ public class APIHandler {
     public static <T> HttpResponse<T> retryUntilSuccess(HttpClient client, HttpRequest request, HttpResponse.BodyHandler<T> handler) {
         while (true) {
             try {
-                return client.send(request, handler);
+                var resp = client.send(request, handler);
+                if (resp.statusCode() == 401 && request.uri().toString().startsWith(valAPIUrl)) {
+                    reEncryptSignup();
+                }
+                return resp;
             } catch (IOException | InterruptedException e) {
                 logger.warn("{} failed, retrying... {}", request, e.getMessage());
 
@@ -151,9 +155,7 @@ public class APIHandler {
         AWSSignatureV4Generator gen = new AWSSignatureV4Generator.Builder(accessKeyID, secretKey).payload(requestBody).serviceName("polly").httpMethodName("POST").regionName("ap-south-1").canonicalURI("/v1/speech").queryParameters(new TreeMap<>()).awsHeaders((TreeMap<String, String>) preheaders.clone()).build();
         try {
             Map<String, String> headers = gen.getHeaders();
-            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create("https://polly.ap-south-1.amazonaws.com/v1/speech"))
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody));
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder().uri(URI.create("https://polly.ap-south-1.amazonaws.com/v1/speech")).POST(HttpRequest.BodyPublishers.ofString(requestBody));
 
             for (Map.Entry<String, String> entry : preheaders.entrySet()) {
                 if (!entry.getKey().equals("host")) {
@@ -212,6 +214,9 @@ public class APIHandler {
 
         if (response.statusCode() == 426) {
             throw new OutdatedVersioningException();
+        } else if (response.statusCode() == 401) {
+            logger.debug("Unauthorized request, retrying... ");
+            return getQuotaLimit();
         }
         logger.debug(String.valueOf(responseBody));
         return Integer.parseInt(responseBody);
@@ -259,9 +264,7 @@ public class APIHandler {
 
     public ArrayList<PlayerAccount> getPlayerNames(final String accessToken, final RiotClientDetails riotClientDetails, final String entitlementToken, final ArrayList<String> playerIDs) {
         final Gson gson = new Gson();
-        logger.debug("Fetching player names for player IDs: {}", playerIDs);
         HttpRequest playerReq = HttpRequest.newBuilder().uri(URI.create(String.format("https://pd.%s.a.pvp.net/name-service/v2/players", riotClientDetails.subject_deployment()))).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-Entitlements-JWT", entitlementToken).header("X-Riot-ClientVersion", riotClientDetails.version()).PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(playerIDs))).build();
-        logger.debug(String.valueOf(playerReq));
         HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), playerReq, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
@@ -299,6 +302,16 @@ public class APIHandler {
                     subject_deployment = arg.getAsString().split("=")[1];
                 }
             }
+        }
+
+        if (version == null || subject_id == null || subject_deployment == null) {
+            logger.warn("Failed to retrieve Riot Client details, retrying...");
+            try {
+                Thread.sleep(750);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return getRiotClientDetails(lockFileHandler);
         }
 
         return new RiotClientDetails(version, subject_id, subject_deployment);

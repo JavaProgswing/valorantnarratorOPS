@@ -53,6 +53,18 @@ public class Main {
         }
     }
 
+    public static void reEncryptSignup() throws IOException, InterruptedException {
+        RegistrationInfo ri;
+        try {
+            ri = fetchRegistrationInfo(1, 1);
+        } catch (OutdatedVersioningException e) {
+            throw new IOException(e);
+        }
+        encryptSignup(ri.signature(), ri.salt());
+        secretKey = ri.signature().toCharArray();
+        secretSalt = ri.salt().toCharArray();
+    }
+
     private static void encryptSignup(String signature, String salt) {
         try {
             Encryption.encrypt(signature, Paths.get(CONFIG_DIR, "secretSign.bin").toString());

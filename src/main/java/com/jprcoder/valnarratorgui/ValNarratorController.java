@@ -1,8 +1,6 @@
 package com.jprcoder.valnarratorgui;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.*;
 import com.jfoenix.controls.JFXToggleButton;
 import com.jprcoder.valnarratorbackend.*;
 import javafx.application.Platform;
@@ -15,7 +13,9 @@ import javafx.scene.layout.AnchorPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -181,11 +181,11 @@ public class ValNarratorController implements XMPPEventDispatcher {
             ProcessBuilder processBuilder = new ProcessBuilder(xmppPath);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
-
-            BufferedWriter processWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
             CompletableFuture.runAsync(() -> {
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line;
+                final Gson gson = new Gson();
+
                 while (true) {
                     try {
                         if ((line = reader.readLine()) == null) break;
@@ -195,12 +195,22 @@ public class ValNarratorController implements XMPPEventDispatcher {
                     }
 
                     try {
-                        Gson gson = new Gson();
+                        if (line.isEmpty()) continue;
+
+                        JsonElement element = JsonParser.parseString(line);
+                        if (!element.isJsonObject() || element.isJsonNull()) {
+                            continue;
+                        }
                         JsonObject json = gson.fromJson(line, JsonObject.class);
                         if (json.get("type").getAsString().equals("error")) {
                             ValNarratorController.getLatestInstance().dispatchError(new XMPPError(json.get("reason").getAsString(), json.get("code").getAsInt()));
                         } else {
-                            XMPPEvent event = new XMPPEvent(json.get("type").getAsString(), json.get("time").getAsLong(), json.get("data").getAsString());
+                            if (json.get("type") == null || json.get("time") == null) {
+                                logger.warn(String.format("Received an invalid event: %s", line));
+                                continue;
+                            }
+                            final String jsonData = (json.get("data") == null) ? "" : json.get("data").getAsString();
+                            XMPPEvent event = new XMPPEvent(json.get("type").getAsString(), json.get("time").getAsLong(), jsonData);
                             if (event.type().equals("incoming")) {
                                 final String xml = event.data();
                                 Pattern idPattern = Pattern.compile("id='(.*?)'");
@@ -230,23 +240,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
                                     ChatDataHandler.getInstance().getProperties().incrementSelfMessagesSent();
                                 }
 
-                                if (xml.startsWith("<presence")) {
-                                    Pattern idPattern = Pattern.compile("id='(.*?)'");
-                                    Matcher idMatcher = idPattern.matcher(xml.replace("\"", "'"));
-                                    String id = idMatcher.find() ? idMatcher.group(1) : null;
-
-                                    Pattern toPattern = Pattern.compile("to='(.*?)'");
-                                    Matcher toMatcher = toPattern.matcher(xml.replace("\"", "'"));
-                                    String to = toMatcher.find() ? toMatcher.group(1) : null;
-                                    if (id != null && id.startsWith("join_muc_") && to != null) {
-                                        ChatDataHandler.getInstance().getProperties().setMucID(to.substring(0, to.indexOf('/')));
-
-                                        Thread.sleep(2000);
-                                        processWriter.write(xml);
-                                        processWriter.flush();
-                                    }
-                                }
-
                                 if (event.type().equals("close-riot") || event.type().equals("close-valorant")) {
                                     ValNarratorApplication.showAlert("Warning", "Valorant or Riot client has been closed, application will close in 5 seconds.");
                                     Thread.sleep(5000);
@@ -255,8 +248,11 @@ public class ValNarratorController implements XMPPEventDispatcher {
                             }
 
                         }
-                    } catch (JsonSyntaxException | NullPointerException | InterruptedException | ExecutionException |
-                             IOException ignored) {
+                    } catch (NullPointerException | InterruptedException | ExecutionException | IOException e) {
+                        logger.warn(String.format("Received an error while processing line: %s", line));
+                        e.printStackTrace();
+                    } catch (JsonSyntaxException ignored) {
+                        logger.debug(String.format("Received non-JSON line: %s", line));
                     }
                 }
             });

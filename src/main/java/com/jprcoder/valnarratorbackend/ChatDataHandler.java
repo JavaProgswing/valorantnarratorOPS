@@ -30,7 +30,6 @@ public class ChatDataHandler {
 
     private final Chat properties;
     private final APIHandler APIHandler;
-    private String previousChatMessage;
 
     private ChatDataHandler() throws NoSuchAlgorithmException, KeyManagementException, IOException {
         ConnectionHandler connectionHandler = new ConnectionHandler();
@@ -73,10 +72,6 @@ public class ChatDataHandler {
         APIHandler.setPremium(mq.isPremium());
     }
 
-    public String getSentMessageXML(final String messageContent) {
-        return String.format("<message id=\"%d:%d\" to=\"%s\" type=\"groupchat\"><body>%s</body></message>", System.currentTimeMillis(), ChatDataHandler.getInstance().getProperties().getSelfMessagesSent() + 1, ChatDataHandler.getInstance().getProperties().getMucID(), messageContent);
-    }
-
     public void message(Message message) {
         if (properties.isDisabled()) {
             logger.info("Valorant Narrator disabled, ignoring message!");
@@ -86,12 +81,6 @@ public class ChatDataHandler {
             logger.info(String.format("Ignoring message from %s!", properties.getPlayerIDTable().get(message.getUserId())));
             return;
         }
-
-        if (message.getContent().equals(previousChatMessage)) {
-            logger.info("Duplicate message detected, ignoring!");
-            return;
-        }
-        previousChatMessage = message.getContent();
 
         if (message.getMessageType() == MessageType.WHISPER && !properties.isPrivateState()) {
             logger.info("Private messages disabled, ignoring message!");
