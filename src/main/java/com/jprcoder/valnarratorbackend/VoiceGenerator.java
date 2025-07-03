@@ -227,6 +227,10 @@ public class VoiceGenerator {
             start = System.currentTimeMillis();
             Runtime.getRuntime().exec(command);
             logger.debug(String.format("(%d ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /unmute \"CABLE Output\"";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully unmuted the VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
         } catch (IOException e) {
             logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
         }
