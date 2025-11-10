@@ -6,7 +6,7 @@
 
     <groupId>com.jprcoder</groupId>
     <artifactId>ValorantNarrator</artifactId>
-    <version>3.86</version>
+    <version>3.87</version>
     <name>ValorantNarrator</name>
 
     <properties>
@@ -21,7 +21,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.5.13</version>
+            <version>1.5.19</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

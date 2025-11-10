@@ -42,7 +42,7 @@ public class InbuiltVoiceSynthesizer {
         if (voices.isEmpty()) {
             logger.warn("No inbuilt voices found.");
         } else {
-            logger.info(String.format("Found %d inbuilt voices.", voices.size()));
+            logger.info("Found {} inbuilt voices.", voices.size());
             speakInbuiltVoice(voices.get(0), "Inbuilt voice synthesizer initialized.", (short) 100);
         }
 
@@ -52,7 +52,7 @@ public class InbuiltVoiceSynthesizer {
             String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
             Runtime.getRuntime().exec(command);
         } catch (IOException e) {
-            logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
+            logger.error("SoundVolumeView.exe generated an error: {}", (Object) e.getStackTrace());
         }
     }
 

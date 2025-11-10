@@ -78,7 +78,7 @@ public class ChatDataHandler {
             return;
         }
         if (properties.isIgnoredPlayerID(message.getUserId())) {
-            logger.info(String.format("Ignoring message from %s!", properties.getPlayerIDTable().get(message.getUserId())));
+            logger.info("Ignoring message from {}!", properties.getPlayerIDTable().get(message.getUserId()));
             return;
         }
 
@@ -105,9 +105,9 @@ public class ChatDataHandler {
             try {
                 VoiceGenerator.getInstance().speakVoice(expandShortForms(finalBody));
             } catch (IOException e) {
-                logger.warn(String.format("Failed to narrate message: %s", e.getMessage()));
+                logger.warn("Failed to narrate message: {}", e.getMessage());
             } catch (QuotaExhaustedException e) {
-                logger.warn(String.format("Quota exhausted, %s", e.getMessage()));
+                logger.warn("Quota exhausted, {}", e.getMessage());
                 ValNarratorController.getLatestInstance().markQuotaExhausted();
             } catch (OutdatedVersioningException e) {
                 ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
