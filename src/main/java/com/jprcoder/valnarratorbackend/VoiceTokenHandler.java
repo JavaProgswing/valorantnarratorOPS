@@ -40,7 +40,7 @@ public class VoiceTokenHandler {
                     }
                     continue;
                 } catch (OutdatedVersioningException e) {
-                    ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                    ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
                     throw new RuntimeException(e);
                 }
                 LAST_REFRESH_MS = System.currentTimeMillis();

@@ -8,7 +8,7 @@
 <?import javafx.scene.paint.*?>
 <?import javafx.scene.text.*?>
 <?import java.lang.*?>
-<AnchorPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="614.0" prefWidth="377.0"
+<AnchorPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="614.0" prefWidth="386.0"
             style="-fx-background-color: transparent;" xmlns="http://javafx.com/javafx/17.0.12"
             fx:controller="com.jprcoder.valnarratorgui.ValNarratorController">
     <AnchorPane fx:id="topBar" prefHeight="55.0" prefWidth="377.0" style="-fx-background-color: #1C2C3C;">
@@ -80,6 +80,7 @@
                     <String fx:value="Skye, VALORANT"/>
                     <String fx:value="Sova, VALORANT"/>
                     <String fx:value="Viper, VALORANT"/>
+                    <String fx:value="Veto, VALORANT"/>
                     <String fx:value="Vyse, VALORANT"/>
                     <String fx:value="Yoru, VALORANT"/>
                 </FXCollections>
@@ -456,18 +457,17 @@
             <Image url="@arrowUp.png"/>
         </ImageView>
     </AnchorPane>
-    <AnchorPane fx:id="panelLogin" layoutY="73.0" prefHeight="355.0" prefWidth="377.0"
+    <AnchorPane fx:id="panelLogin" layoutY="73.0" prefHeight="313.0" prefWidth="386.0"
                 style="-fx-background-color: transparent;">
-        <ImageView fitHeight="201.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
+        <ImageView fitHeight="292.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
             <Image url="@appBackgroundBLUR.png"/>
         </ImageView>
-        <Label layoutX="110.0" layoutY="13.0" prefHeight="38.0" prefWidth="155.0" text="VALORANT STARTUP"
-               textFill="WHITE">
+        <Label layoutX="110.0" layoutY="13.0" prefHeight="38.0" prefWidth="155.0" textFill="WHITE">
             <font>
                 <Font name="Candara Bold" size="17.0"/>
             </font>
         </Label>
-        <Separator layoutX="4.0" layoutY="51.0" prefHeight="10.0" prefWidth="371.0"/>
+        <Separator layoutX="14.0" layoutY="198.0" prefHeight="10.0" prefWidth="371.0"/>
         <Label layoutX="71.0" layoutY="4.0" prefHeight="55.0" prefWidth="242.0" text="Narrator Premium"
                textAlignment="RIGHT" underline="true" visible="false">
             <font>
@@ -497,16 +497,41 @@
                 </LinearGradient>
             </textFill>
         </Label>
-        <Label layoutX="71.0" layoutY="74.0" prefHeight="42.0" prefWidth="242.0"
+        <Label layoutX="59.0" layoutY="95.0" prefHeight="42.0" prefWidth="266.0"
                text=" This window will automatically redirect to other windows when the startup process is completed!"
                textFill="#fffefe" wrapText="true">
             <font>
-                <Font size="11.0"/>
+                <Font name="System Italic" size="12.0"/>
             </font>
         </Label>
-        <ProgressBar fx:id="progressLogin" layoutX="66.0" layoutY="133.0" opacity="0.87" prefHeight="32.0"
-                     prefWidth="242.0" progress="1.0"/>
-        <Label fx:id="progressLoginLabel" layoutX="110.0" layoutY="140.0" prefHeight="17.0" prefWidth="140.0"
-               text="Preparing to start valorant" textFill="#fffefe"/>
+        <ProgressBar fx:id="progressLogin" layoutX="59.0" layoutY="147.0" opacity="0.87" prefHeight="19.0"
+                     prefWidth="258.0" progress="1.0"/>
+        <Label fx:id="progressLoginLabel" layoutX="133.0" layoutY="28.0" prefHeight="42.0" prefWidth="163.0"
+               text="Preparing to start valorant" textAlignment="CENTER" textFill="#fffefe" wrapText="true">
+            <font>
+                <Font name="System Bold Italic" size="12.0"/>
+            </font>
+        </Label>
+        <Button defaultButton="true" layoutX="224.0" layoutY="231.0" mnemonicParsing="false"
+                onAction="#openDiscordInvite" prefHeight="32.0" prefWidth="140.0"
+                style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
+                text="Join us on discord!" textAlignment="CENTER" textFill="WHITE">
+            <font>
+                <Font size="14.0"/>
+            </font>
+        </Button>
+        <Label layoutX="14.0" layoutY="226.0" prefHeight="42.0" prefWidth="209.0"
+               text="Did something unexpected happen? Don't worry. Join us on our discord server." textFill="#f2efef"
+               wrapText="true">
+            <font>
+                <Font name="System Italic" size="11.0"/>
+            </font>
+        </Label>
+        <Label fx:id="progressStatusLabel" layoutX="71.0" layoutY="41.0" prefHeight="18.0" prefWidth="61.0"
+               text="STATUS:" textFill="#fffefe">
+            <font>
+                <Font name="System Bold" size="13.0"/>
+            </font>
+        </Label>
     </AnchorPane>
 </AnchorPane>

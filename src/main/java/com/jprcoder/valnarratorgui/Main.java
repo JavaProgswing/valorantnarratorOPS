@@ -5,11 +5,14 @@ import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import ch.qos.logback.core.util.StatusPrinter;
 import com.google.gson.JsonSyntaxException;
+import com.jprcoder.valnarratorbackend.AgentVoiceSynthesizer;
 import com.jprcoder.valnarratorbackend.OutdatedVersioningException;
 import com.jprcoder.valnarratorbackend.RegistrationInfo;
 import com.jprcoder.valnarratorbackend.VersionInfo;
 import com.jprcoder.valnarratorencryption.Encryption;
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +72,7 @@ public class Main {
         try {
             Encryption.encrypt(signature, Paths.get(CONFIG_DIR, "secretSign.bin").toString());
         } catch (IOException e) {
-            ValNarratorApplication.showPreStartupDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.fromInt(JOptionPane.ERROR_MESSAGE));
+            ValNarratorApplication.showDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.fromInt(JOptionPane.ERROR_MESSAGE));
             System.exit(-1);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
@@ -78,7 +81,7 @@ public class Main {
         try {
             Encryption.encrypt(salt, Paths.get(CONFIG_DIR, "secretSalt.bin").toString());
         } catch (IOException e) {
-            ValNarratorApplication.showPreStartupDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
             System.exit(-1);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
@@ -95,7 +98,7 @@ public class Main {
             FileLock lock = randomAccessFile.getChannel().tryLock();
             if (lock == null) {
                 randomAccessFile.close();
-                ValNarratorApplication.showPreStartupDialog("App", "Another instance of this application is already running!", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                ValNarratorApplication.showDialog("App", "Another instance of this application is already running!", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
                 System.exit(0);
             }
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -141,17 +144,48 @@ public class Main {
         currentVersion = Double.parseDouble(fullVersioning);
         boolean insMessage = Arrays.asList(args).contains("-showInstallationPrompt");
         if (insMessage && args.length == 1) {
-            CompletableFuture.runAsync(() -> {
+
+            if (AgentVoiceSynthesizer.isNewerVersionAvailable()) {
+
+                ValNarratorApplication.showNonBlockingDialog("Installation", "ValorantNarrator is updating agent voices...", MessageType.INFORMATION_MESSAGE).thenAccept(dialog -> CompletableFuture.runAsync(() -> {
+                    try {
+                        AgentVoiceSynthesizer.checkForUpdates((percent, done, total) -> Platform.runLater(() -> {
+                            if (percent >= 0) {
+                                if (done == total) dialog.setContentText("Finalizing update, please wait...");
+                                else
+                                    dialog.setContentText(String.format("Updating agent voices...\n%.2f%% (%.2f / %.2f MB)", percent, done / 10_00_000.0, total / 10_00_000.0));
+
+                            } else dialog.setContentText("Updating agent voices...\n" + done + " bytes downloaded");
+                        }));
+
+                    } catch (IOException | InterruptedException e) {
+                        logger.error("Download failed", e);
+                        Platform.runLater(() -> {
+                            dialog.setAlertType(Alert.AlertType.ERROR);
+                            dialog.setContentText("Failed to download update!");
+                        });
+                        return;
+                    }
+
+                    Platform.runLater(() -> dialog.setContentText("Download complete! Restarting in 5 seconds..."));
+
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException ignored) {
+                    }
+
+                    System.exit(0);
+                }));
+            } else {
+                ValNarratorApplication.showDialog("Installation", String.format("ValorantNarrator v-%1$,.2f has been downloaded, restart the system to finish installation!", currentVersion), MessageType.fromInt(JOptionPane.INFORMATION_MESSAGE));
                 try {
                     Thread.sleep(5000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                } catch (InterruptedException ignored) {
                 }
                 System.exit(0);
-            });
-            ValNarratorApplication.showPreStartupDialog("Installation", String.format("ValorantNarrator v-%1$,.2f has been downloaded, restart the system for finishing the installation!", currentVersion), MessageType.fromInt(JOptionPane.INFORMATION_MESSAGE));
+            }
+            return;
         }
-
         logger.info(String.format("Starting Valorant-Narrator on v-%1$,.2f", currentVersion));
         logger.info(String.format("Build date: %s", properties.getProperty("buildTimestamp")));
 
@@ -165,7 +199,7 @@ public class Main {
                         vi = fetchVersionInfo();
                         if (vi.version() > currentVersion) {
                             logger.info(String.format("New Update v%f found, updating!", vi.version()));
-                            ValNarratorApplication.showPreStartupDialog("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.", MessageType.fromInt(JOptionPane.INFORMATION_MESSAGE));
+                            ValNarratorApplication.showDialog("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.", MessageType.fromInt(JOptionPane.INFORMATION_MESSAGE));
                             long start = System.currentTimeMillis();
                             Toolkit.getDefaultToolkit().beep();
                             downloadLatestVersion();
@@ -195,7 +229,7 @@ public class Main {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
             throw new RuntimeException(e);
         }
         logger.info(String.format("New registration: %b, Serial id: %s", ri.registered(), serialNumber));

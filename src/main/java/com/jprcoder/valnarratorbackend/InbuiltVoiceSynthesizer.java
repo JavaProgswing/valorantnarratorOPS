@@ -52,7 +52,8 @@ public class InbuiltVoiceSynthesizer {
             String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
             Runtime.getRuntime().exec(command);
         } catch (IOException e) {
-            logger.error("SoundVolumeView.exe generated an error: {}", (Object) e.getStackTrace());
+            logger.error("SoundVolumeView.exe generated an error: {}", e);
+            e.printStackTrace();
         }
     }
 

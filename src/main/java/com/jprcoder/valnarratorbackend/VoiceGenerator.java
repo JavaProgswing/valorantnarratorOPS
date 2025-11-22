@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.io.*;
-import java.net.URL;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -27,7 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.DataFormatException;
 
 import static com.jprcoder.valnarratorbackend.VoiceType.fromString;
@@ -59,7 +57,8 @@ public class VoiceGenerator {
     private static final List<String> inbuiltVoices;
     private static final ConnectionHandler connectionHandler;
     private static final InbuiltVoiceSynthesizer synthesizer = new InbuiltVoiceSynthesizer();
-    private static final AtomicBoolean isSpeaking = new AtomicBoolean(false);
+    private static final AgentVoiceSynthesizer agentSynthesizer = new AgentVoiceSynthesizer();
+    private static final PlaybackDetector playbackDetector = new PlaybackDetector();
 
     private static boolean isTeamKeyEnabled = true;
     private static boolean syncValorantSettingsToggle = true;
@@ -126,6 +125,10 @@ public class VoiceGenerator {
         });
     }
 
+    public static void initializeAgentSynthesizer() {
+        agentSynthesizer.initialize();
+    }
+
     public static RiotClientDetails getRiotClientDetails() {
         return riotClientDetails;
     }
@@ -149,13 +152,6 @@ public class VoiceGenerator {
         return inbuiltVoices;
     }
 
-    private static boolean isSpeaking() {
-        return !isSpeaking.compareAndSet(false, true);
-    }
-
-    private static void finishedSpeaking() {
-        isSpeaking.set(false);
-    }
 
     public static String getCurrentVoice() {
         return currentVoice;
@@ -171,10 +167,10 @@ public class VoiceGenerator {
 
     public static boolean setCurrentVoice(final String voice) {
         final VoiceType voiceType = fromString(voice);
-        if (voiceType == VoiceType.PREMIUM) {
-            if (!ChatDataHandler.getInstance().isPremium()) {
+        if (voiceType == VoiceType.AGENT) {
+            if (!agentSynthesizer.isInitialized()) {
                 ValNarratorController.getLatestInstance().revertVoiceSelection();
-                showAlert("Premium Required", "Valorant voices are available with premium, please subscribe to premium to continue using this voice! You can subscribe in the info tab.");
+                showAlert("Agent Voice", agentSynthesizer.getStatus());
                 return false;
             }
             ValNarratorController.getLatestInstance().disableRateSlider();
@@ -232,7 +228,8 @@ public class VoiceGenerator {
             Runtime.getRuntime().exec(command);
             logger.debug(String.format("(%d ms)Successfully unmuted the VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
         } catch (IOException e) {
-            logger.error(String.format("SoundVolumeView.exe generated an error: %s", (Object) e.getStackTrace()));
+            logger.error(String.format("SoundVolumeView.exe generated an error: %s", e));
+            e.printStackTrace();
         }
         LockFileHandler lockFileHandler = new LockFileHandler();
         APIHandler apiHandler = new APIHandler(connectionHandler);
@@ -446,103 +443,111 @@ public class VoiceGenerator {
         return jsonObject;
     }
 
-    public Map.Entry<VoiceType, HttpResponse<?>> speakVoice(String text) throws IOException, QuotaExhaustedException, OutdatedVersioningException {
-        boolean isTextOverflowed = Math.min(text.length(), 71) != text.length();
+    /**
+     * Wait until detector sees audio or timeout
+     */
+    private boolean waitForAudioToStart(int timeoutMs) {
+        long start = System.currentTimeMillis();
+        if (playbackDetector.isPlaying()) return true;
 
-        logger.info(String.format("(%s)Narrating message: '%s' with (%s)%s's voice", (isTextOverflowed) ? "-" : "+", text, currentVoiceType, getCurrentVoice()));
-        final VoiceType voiceType = currentVoiceType;
-        if (voiceType == VoiceType.PREMIUM) {
-            final Map.Entry<HttpResponse<String>, String> response = ChatDataHandler.getInstance().getAPIHandler().speakPremiumVoice(getCurrentVoice(), text);
-            final String audioUrl = response.getValue();
-            if (audioUrl == null) {
-                return new AbstractMap.SimpleEntry<>(voiceType, response.getKey());
+        while (!playbackDetector.isPlaying()) {
+            if (System.currentTimeMillis() - start >= timeoutMs) return false;
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException ignored) {
             }
+        }
+        return true;
+    }
 
-            while (isSpeaking()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+    /**
+     * Wait until detector sees silence
+     */
+    private void waitUntilDetectorSilent() {
+        while (playbackDetector.isPlaying()) {
+            try {
+                Thread.sleep(40);
+            } catch (InterruptedException ignored) {
+            }
+        }
+    }
+
+    private void handleAudioLifecycle(Runnable ttsTask) {
+        if (isTeamKeyEnabled) {
+            robot.keyPress(keyEvent);
+        }
+        // Wait for playback to end (audio detector becomes silent)
+        waitUntilDetectorSilent();
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                if (ttsTask != null) {
+                    ttsTask.run(); // Run the TTS playback
+                }
+            } finally {
+                if (isTeamKeyEnabled) {
+                    robot.keyRelease(keyEvent);
                 }
             }
-            logger.debug("Using agent voice: {}", currentVoice);
+        });
+    }
+
+    public Map.Entry<VoiceType, HttpResponse<?>> speakVoice(String text) throws IOException, QuotaExhaustedException, OutdatedVersioningException {
+        final long start = System.currentTimeMillis();
+        synchronized (this) {
+            logger.info("({} ms)Narrating: '{}' using ({}) {}", System.currentTimeMillis() - start, text, currentVoiceType, getCurrentVoice());
+
+            final VoiceType voiceType = currentVoiceType;
+            InputStream speechStream;
+            HttpResponse<?> httpResp = null;
+
             try {
-                URL url = new URL(audioUrl);
-                InputStream fin = url.openStream();
-                BufferedInputStream bin = new BufferedInputStream(fin);
-                AdvancedPlayer player = new AdvancedPlayer(bin, FactoryRegistry.systemRegistry().createAudioDevice());
-                player.setPlayBackListener(new CustomPlaybackListener());
+                switch (voiceType) {
+
+                    case AGENT:
+                        speechStream = agentSynthesizer.getAgentVoice(currentVoice, text);
+                        break;
+
+                    case INBUILT:
+                        CompletableFuture.runAsync(() -> handleAudioLifecycle(() -> synthesizer.speakInbuiltVoice(currentVoice, text, currentVoiceRate)));
+                        return new AbstractMap.SimpleEntry<>(voiceType, null);
+
+                    case STANDARD:
+                    default:
+                        boolean isNeural = (ChatDataHandler.getInstance().isPremium() && !normalVoices.contains(currentVoice)) || neuralVoices.contains(currentVoice);
+
+                        AbstractMap.Entry<HttpResponse<InputStream>, InputStream> resp = ChatDataHandler.getInstance().getAPIHandler().speakVoice(text, currentVoiceRate, getCurrentVoice(), isNeural ? VoiceEngineType.NEURAL : VoiceEngineType.STANDARD, System.getProperty("aws.accessKeyId"), System.getProperty("aws.secretKey"), System.getProperty("aws.sessionToken"));
+
+                        httpResp = resp.getKey();
+                        speechStream = resp.getValue();
+                        break;
+                }
+            } catch (IOException e) {
+                logger.error("Error preparing TTS stream for voice type {}: {}", voiceType, e.getMessage());
+                return new AbstractMap.SimpleEntry<>(voiceType, null);
+            }
+
+            AdvancedPlayer player;
+            try {
+                player = new AdvancedPlayer(speechStream, FactoryRegistry.systemRegistry().createAudioDevice());
+            } catch (JavaLayerException e) {
+                logger.warn("Failed to initialize player: {}", e.getMessage());
+                return new AbstractMap.SimpleEntry<>(voiceType, httpResp);
+            }
+
+            player.setPlayBackListener(new CustomPlaybackListener());
+
+            try {
                 player.play();
             } catch (JavaLayerException e) {
-                logger.warn("Exception while playing agent voice!");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                logger.warn("Playback exception: {}", e.getMessage());
             }
-            try {
-                finishedSpeaking();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
+            CompletableFuture.runAsync(() -> handleAudioLifecycle(() -> {
+            }));
 
-            return new AbstractMap.SimpleEntry<>(voiceType, response.getKey());
-        } else if (voiceType == VoiceType.INBUILT) {
-            logger.debug("Using inbuilt voice: {}", currentVoice);
-            if (isTeamKeyEnabled) {
-                robot.keyRelease(keyEvent);
-                robot.keyPress(keyEvent);
-            }
-            while (isSpeaking()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            synthesizer.speakInbuiltVoice(currentVoice, text, currentVoiceRate);
-            try {
-                finishedSpeaking();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            return new AbstractMap.SimpleEntry<>(voiceType, null);
+            return new AbstractMap.SimpleEntry<>(voiceType, httpResp);
         }
 
-        String id = System.getProperty("aws.accessKeyId"), key = System.getProperty("aws.secretKey"), sessionToken = System.getProperty("aws.sessionToken");
-        InputStream speechStream;
-        final AbstractMap.Entry<HttpResponse<InputStream>, InputStream> response;
-        if ((ChatDataHandler.getInstance().isPremium() && !normalVoices.contains(currentVoice)) || neuralVoices.contains(currentVoice)) {
-            response = ChatDataHandler.getInstance().getAPIHandler().speakVoice(text, currentVoiceRate, getCurrentVoice(), VoiceEngineType.NEURAL, id, key, sessionToken);
-        } else {
-            response = ChatDataHandler.getInstance().getAPIHandler().speakVoice(text, currentVoiceRate, getCurrentVoice(), VoiceEngineType.STANDARD, id, key, sessionToken);
-        }
-        speechStream = response.getValue();
-        AdvancedPlayer player;
-        try {
-            player = new AdvancedPlayer(speechStream, FactoryRegistry.systemRegistry().createAudioDevice());
-        } catch (JavaLayerException e) {
-            logger.warn("Exception while initializing normal voice!");
-            return new AbstractMap.SimpleEntry<>(voiceType, response.getKey());
-        }
-        player.setPlayBackListener(new CustomPlaybackListener());
-        while (isSpeaking()) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        logger.debug("Using standard voice: {}", currentVoice);
-        try {
-            player.play();
-        } catch (JavaLayerException e) {
-            logger.warn("Exception while playing normal voice!");
-        }
-        try {
-            finishedSpeaking();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return new AbstractMap.SimpleEntry<>(voiceType, response.getKey());
     }
 
     class CustomPlaybackListener extends PlaybackListener {

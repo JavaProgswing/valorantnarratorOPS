@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -24,55 +23,129 @@ import java.io.InputStream;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ValNarratorApplication extends Application {
     private static final Logger logger = LoggerFactory.getLogger(ValNarratorApplication.class);
     private boolean firstTime;
     private TrayIcon trayIcon;
 
-    public static void showPreStartupDialog(String headerText, String contentText, MessageType messageType) {
-        JOptionPane.showMessageDialog(null, contentText, headerText, messageType.getValue());
+    public static void showDialog(String headerText, String contentText, MessageType messageType) {
+        Alert.AlertType alertType;
+        switch (messageType) {
+            case INFORMATION_MESSAGE -> alertType = Alert.AlertType.INFORMATION;
+            case WARNING_MESSAGE -> alertType = Alert.AlertType.WARNING;
+            case ERROR_MESSAGE -> alertType = Alert.AlertType.ERROR;
+            default -> alertType = Alert.AlertType.NONE;
+        }
+        FXInit.init();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(alertType);
+            alert.setHeaderText(headerText);
+            alert.setContentText(contentText);
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            alert.showAndWait();
+        });
     }
 
+    public static CompletableFuture<Alert> showNonBlockingDialog(
+            String headerText,
+            String contentText,
+            MessageType messageType
+    ) {
+        CompletableFuture<Alert> future = new CompletableFuture<>();
+
+        FXInit.init();
+        Platform.runLater(() -> {
+            try {
+
+                Alert.AlertType alertType = switch (messageType) {
+                    case INFORMATION_MESSAGE -> Alert.AlertType.INFORMATION;
+                    case WARNING_MESSAGE -> Alert.AlertType.WARNING;
+                    case ERROR_MESSAGE -> Alert.AlertType.ERROR;
+                    default -> Alert.AlertType.NONE;
+                };
+
+                Alert alert = new Alert(alertType);
+                alert.setHeaderText(headerText);
+                alert.setContentText(contentText);
+                alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+
+                alert.show();  // runs on FX thread — safe
+
+                future.complete(alert);
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+        });
+
+        return future;
+    }
+
+
     public static void showInformation(String headerText, String contentText) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setHeaderText(headerText);
-        alert.setContentText(contentText);
-        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
-        alert.show();
+        FXInit.init();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setHeaderText(headerText);
+            alert.setContentText(contentText);
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            alert.show();
+        });
     }
 
     public static void showAlert(String headerText, String contentText) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setHeaderText(headerText);
-        alert.setContentText(contentText);
-        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
-        Toolkit.getDefaultToolkit().beep();
-        alert.show();
+        FXInit.init();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText(headerText);
+            alert.setContentText(contentText);
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            Toolkit.getDefaultToolkit().beep();
+            alert.show();
+        });
     }
 
     public static void showAlertAndWait(String headerText, String contentText) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setHeaderText(headerText);
-        alert.setContentText(contentText);
-        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
-        Toolkit.getDefaultToolkit().beep();
-        alert.showAndWait();
+        FXInit.init();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText(headerText);
+            alert.setContentText(contentText);
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            Toolkit.getDefaultToolkit().beep();
+            alert.showAndWait();
+        });
     }
 
     public static boolean showConfirmationAlertAndWait(String headerText, String contentText) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Valorant Narrator");
-        alert.setHeaderText(headerText);
-        alert.setContentText(contentText);
+        FXInit.init();
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicBoolean userChoice = new AtomicBoolean(false);
 
-        ButtonType yesButton = new ButtonType("Yes");
-        ButtonType noButton = new ButtonType("No");
-        alert.getButtonTypes().setAll(yesButton, noButton);
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Valorant Narrator");
+            alert.setHeaderText(headerText);
+            alert.setContentText(contentText);
 
-        Optional<ButtonType> result = alert.showAndWait();
+            ButtonType yesButton = new ButtonType("Yes");
+            ButtonType noButton = new ButtonType("No");
+            alert.getButtonTypes().setAll(yesButton, noButton);
 
-        return (result.isPresent() && result.get() == yesButton);
+            Optional<ButtonType> result = alert.showAndWait();
+            userChoice.set(result.isPresent() && result.get() == yesButton);
+
+            latch.countDown();
+        });
+
+        try {
+            latch.await();
+        } catch (InterruptedException ignored) {
+        }
+
+        return userChoice.get();
     }
 
     @Override

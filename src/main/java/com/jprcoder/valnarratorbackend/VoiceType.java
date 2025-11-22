@@ -1,11 +1,11 @@
 package com.jprcoder.valnarratorbackend;
 
 public enum VoiceType {
-    PREMIUM, STANDARD, INBUILT;
+    AGENT, STANDARD, INBUILT;
 
     public static VoiceType fromString(String voiceType) {
         if (voiceType.endsWith("VALORANT")) {
-            return PREMIUM;
+            return AGENT;
         } else if (voiceType.endsWith("INBUILT")) {
             return INBUILT;
         } else {

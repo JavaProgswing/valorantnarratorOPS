@@ -126,7 +126,22 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 logger.info("Forcefully closed XMPP!");
             }
         } catch (Exception e) {
-            logger.error("Killing XMPP generated an error: {}", (Object) e.getStackTrace());
+            logger.error("Killing XMPP generated an error: {}", e);
+            e.printStackTrace();
+        }
+
+        try {
+            String command = "taskkill /F /IM valorantNarrator-agentVoices.exe";
+            ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            int code = process.waitFor();
+            if (code == 0) {
+                logger.info("Forcefully closed valorantNarrator-agentVoices!");
+            }
+        } catch (Exception e) {
+            logger.error("Killing valorantNarrator-agentVoices generated an error: {}", e);
+            e.printStackTrace();
         }
 
         try {
@@ -139,7 +154,8 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 logger.info("Forcefully closed riot client!");
             }
         } catch (Exception e) {
-            logger.error("Killing Riot-Client generated an error: {}", (Object) e.getStackTrace());
+            logger.error("Killing Riot-Client generated an error: {}", e);
+            e.printStackTrace();
         }
 
         try {
@@ -152,7 +168,8 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 logger.info("Forcefully closed valorant!");
             }
         } catch (Exception e) {
-            logger.error("Killing Valorant generated an error: {}", (Object) e.getStackTrace());
+            logger.error("Killing Valorant generated an error: {}", e);
+            e.printStackTrace();
         }
 
         logger.info("Closed XMPP, riot-client, valorant in {} ms.", (System.currentTimeMillis() - start));
@@ -172,7 +189,8 @@ public class ValNarratorController implements XMPPEventDispatcher {
             Runtime.getRuntime().exec(command);
             logger.debug("({} ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start));
         } catch (IOException e) {
-            logger.error("SoundVolumeView.exe generated an error: {}", (Object) e.getStackTrace());
+            logger.error("SoundVolumeView.exe generated an error: {}", e);
+            e.printStackTrace();
         }
         logger.info("Initialized app's sound output.");
         logger.info("Initializing xmpp-node.");
@@ -190,7 +208,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                     try {
                         if ((line = reader.readLine()) == null) break;
                     } catch (IOException e) {
-                        logger.error("Reading Xmpp-Node's output generated an error: {}", (Object) e.getStackTrace());
+                        logger.error("Reading Xmpp-Node's output generated an error: {}", e);
                         throw new RuntimeException(e);
                     }
 
@@ -239,6 +257,33 @@ public class ValNarratorController implements XMPPEventDispatcher {
                                 }
 
                                 if (event.type().equals("close-riot") || event.type().equals("close-valorant")) {
+                                    try {
+                                        String command1 = "taskkill /F /IM valorantNarrator-xmpp.exe";
+                                        ProcessBuilder processBuilder1 = new ProcessBuilder(command1.split("\\s+"));
+                                        processBuilder1.redirectErrorStream(true);
+                                        Process process1 = processBuilder1.start();
+                                        int code1 = process1.waitFor();
+                                        if (code1 == 0) {
+                                            logger.info("Forcefully closed XMPP!");
+                                        }
+                                    } catch (Exception e) {
+                                        logger.error("Killing XMPP generated an error: {}", e);
+                                        e.printStackTrace();
+                                    }
+
+                                    try {
+                                        String command2 = "taskkill /F /IM valorantNarrator-agentVoices.exe";
+                                        ProcessBuilder processBuilder2 = new ProcessBuilder(command2.split("\\s+"));
+                                        processBuilder2.redirectErrorStream(true);
+                                        Process process2 = processBuilder2.start();
+                                        int code2 = process2.waitFor();
+                                        if (code2 == 0) {
+                                            logger.info("Forcefully closed valorantNarrator-agentVoices!");
+                                        }
+                                    } catch (Exception e) {
+                                        logger.error("Killing valorantNarrator-agentVoices generated an error: {}", e);
+                                        e.printStackTrace();
+                                    }
                                     ValNarratorApplication.showAlert("Warning", "Valorant or Riot client has been closed, application will close in 5 seconds.");
                                     Thread.sleep(5000);
                                     System.exit(0);
@@ -261,11 +306,18 @@ public class ValNarratorController implements XMPPEventDispatcher {
         logger.info("Initialization completed in {} ms.", System.currentTimeMillis() - appStart);
 
         CompletableFuture.runAsync(() -> {
+            final long startTime = System.currentTimeMillis();
+            boolean warningTriggered = false;
             while (isLoading) {
                 try {
                     Thread.sleep(50);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                }
+                if (System.currentTimeMillis() - startTime > 30_000 && !warningTriggered) {
+                    logger.warn("Loading is taking longer than expected...");
+                    Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Preparing to start valorant, this may take a while..."));
+                    warningTriggered = true;
                 }
                 if (ValNarratorController.getLatestInstance().progressLogin.getProgress() >= 1)
                     Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLogin.setProgress(0));
@@ -641,9 +693,11 @@ public class ValNarratorController implements XMPPEventDispatcher {
             });
         } else {
             logger.error("Exiting due to {}", error.reason());
-            Platform.runLater(() -> {
-                showAlertAndWait("", error.reason());
-                System.exit(-1);
+            CompletableFuture.runAsync(() -> {
+                Platform.runLater(() -> {
+                    showAlertAndWait("", error.reason());
+                    System.exit(-1);
+                });
             });
         }
     }
@@ -659,6 +713,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
             btnInfo.setOpacity(1);
             btnUser.setOpacity(1);
             btnSettings.setOpacity(1);
+            VoiceGenerator.initializeAgentSynthesizer();
         }
     }
 

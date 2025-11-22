@@ -37,7 +37,7 @@ public class ChatDataHandler {
         try {
             properties = new Chat(APIHandler.getQuotaLimit());
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
             throw new RuntimeException(e);
         }
         try {
@@ -65,7 +65,7 @@ public class ChatDataHandler {
         try {
             mq = APIHandler.getRequestQuota();
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
             throw new RuntimeException(e);
         }
         ValNarratorController.getLatestInstance().updateRequestQuota(mq);
@@ -110,7 +110,7 @@ public class ChatDataHandler {
                 logger.warn("Quota exhausted, {}", e.getMessage());
                 ValNarratorController.getLatestInstance().markQuotaExhausted();
             } catch (OutdatedVersioningException e) {
-                ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
                 throw new RuntimeException(e);
             }
         });

@@ -7,15 +7,11 @@ import com.google.gson.reflect.TypeToken;
 import com.jprcoder.valnarratorencryption.Signature;
 import com.jprcoder.valnarratorencryption.SignatureValidator;
 import com.jprcoder.valnarratorgui.ValNarratorApplication;
-import com.jprcoder.valnarratorgui.ValNarratorController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
-import java.io.DataInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
@@ -25,6 +21,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -103,6 +100,45 @@ public class APIHandler {
         return new RegistrationInfo(true, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
     }
 
+    public static void downloadAgentVoice(ProgressCallback callback) throws IOException, InterruptedException {
+        String url = valAPIUrl + "/agentvoice/download";
+
+        HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build();
+        HttpRequest req = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
+        HttpResponse<InputStream> resp = client.send(req, HttpResponse.BodyHandlers.ofInputStream());
+        long totalBytes = resp.headers().firstValueAsLong("Content-Length").orElse(-1);
+
+        logger.debug("Total bytes: {}", totalBytes);
+
+        InputStream input = resp.body();
+
+        File targetDir = new File(System.getenv("LOCALAPPDATA").replace("\\", "/") + "/ValorantNarrator");
+        targetDir.mkdirs();
+
+        File temp = File.createTempFile("agentvoice", ".exe");
+
+        try (BufferedInputStream bis = new BufferedInputStream(input); FileOutputStream fos = new FileOutputStream(temp)) {
+            byte[] buffer = new byte[8192];
+            long downloaded = 0;
+            int read;
+
+            while ((read = bis.read(buffer)) != -1) {
+                fos.write(buffer, 0, read);
+                downloaded += read;
+
+                if (callback != null) {
+                    double percent = totalBytes > 0 ? (100.0 * downloaded / totalBytes) : -1;
+                    callback.onProgress(percent, downloaded, totalBytes);
+                }
+            }
+        }
+
+        // Move to final location
+        File outFile = new File(targetDir, "valorantNarrator-agentVoices.exe");
+        Files.copy(temp.toPath(), outFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+    }
+
+
     public static void downloadLatestVersion() throws IOException {
         final String installerLocation = Paths.get(System.getenv("Temp"), "ValorantNarrator").toString();
         URL url;
@@ -138,6 +174,8 @@ public class APIHandler {
         } catch (Exception m) {
             m.printStackTrace();
         }
+
+        logger.debug("Starting installer from {}", installerLocation);
         Runtime.getRuntime().exec(String.format("cmd.exe /K \"cd %s && %s /silent\"", installerLocation, installerName));
     }
 
@@ -178,7 +216,7 @@ public class APIHandler {
         } catch (NoSuchAlgorithmException | InvalidKeyException | IOException e) {
             throw new RuntimeException(e);
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showPreStartupDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
             throw new RuntimeException(e);
         }
     }
@@ -340,30 +378,6 @@ public class APIHandler {
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
         logger.debug(String.valueOf(responseBody));
-    }
-
-    public AbstractMap.Entry<HttpResponse<String>, String> speakPremiumVoice(final String voice, final String text) throws IOException, OutdatedVersioningException {
-        Signature sign = generateSignature();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/getPremiumVoice?hwid=" + serialNumber + "&version=" + currentVersion)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).POST(HttpRequest.BodyPublishers.ofString(String.format("""
-                {
-                  "emotion": "Neutral",
-                  "name": "%s",
-                  "text": "%s",
-                  "speed": 1
-                }""", voice, text))).setHeader("content-type", "application/json").build();
-        HttpResponse<String> response;
-        response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
-        logger.debug(String.valueOf(response));
-        final String responseBody = response.body().replace("\"", "");
-        logger.debug(responseBody);
-        if (response.statusCode() == 503 || response.statusCode() == 504) {
-            ValNarratorApplication.showAlert("Server Error!", "Custom voices is currently down, please try again later.");
-            ValNarratorController.getLatestInstance().revertVoiceSelection();
-            return new AbstractMap.SimpleEntry<>(response, null);
-        } else if (response.statusCode() == 426) {
-            throw new OutdatedVersioningException();
-        }
-        return new AbstractMap.SimpleEntry<>(response, responseBody);
     }
 
     public String getSubscriptionURL() {
