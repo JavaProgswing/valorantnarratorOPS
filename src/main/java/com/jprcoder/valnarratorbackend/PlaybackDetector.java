@@ -4,11 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sound.sampled.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
 
 class PlaybackDetector {
     private static final Logger logger = LoggerFactory.getLogger(PlaybackDetector.class);
@@ -43,60 +39,9 @@ class PlaybackDetector {
         this.line.start();
         Arrays.fill(rollingDb, -90);
 
-        CompletableFuture.runAsync(() -> {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            String command = fileLocation + " /mute \"CABLE Output\"";
-            long start = System.currentTimeMillis();
-            try {
-                Runtime.getRuntime().exec(command);
-            } catch (IOException e) {
-                logger.error(String.format("SoundVolumeView.exe generated an error: ", e));
-                e.printStackTrace();
-            }
-            logger.debug(String.format("(%d ms)Successfully muted the VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
-
-            command = fileLocation + " /Stdout /GetMute \"CABLE Output\"";
-            boolean muted = false;
-            long timeoutMs = 30000;
-            long pollStart = System.currentTimeMillis();
-
-            while (System.currentTimeMillis() - pollStart < timeoutMs) {
-                try {
-                    Process p = Runtime.getRuntime().exec(command);
-                    BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                    String output = br.readLine();
-                    logger.debug("CABLE Output's SVCL Mute status: " + output);
-
-                    if ("1".equals(output)) {
-                        muted = true;
-                        break;
-                    }
-
-                    Thread.sleep(30);
-                } catch (IOException | InterruptedException e) {
-                    logger.error("Polling error: " + e.getMessage());
-                    break;
-                }
-            }
-
-            if (muted) {
-                logger.info(String.format("CABLE Output's SVCL Mute confirmed in %d ms", (System.currentTimeMillis() - start)));
-            } else {
-                logger.warn("CABLE Output's SVCL Mute check failed!");
-            }
-
-            calibrateBaseline();
-
-            command = fileLocation + " /unmute \"CABLE Output\"";
-            start = System.currentTimeMillis();
-            try {
-                Runtime.getRuntime().exec(command);
-            } catch (IOException e) {
-                logger.error(String.format("SoundVolumeView.exe generated an error: %s", e));
-                e.printStackTrace();
-            }
-            logger.debug(String.format("(%d ms)Successfully unmuted the VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
-        });
+        logger.info(String.format("BaselineDb: %f", baselineDb));
+        logger.info(String.format("NoisePeakDb: %f", noisePeakDb));
+        logger.info(String.format("Auto Threshold: %f dB", detectThresholdDb));
     }
 
     private static double calcRMS(byte[] audio) {

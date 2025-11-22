@@ -349,14 +349,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
         rateSlider.valueProperty().addListener((observable, oldValue, newValue) -> VoiceGenerator.setCurrentRate(newValue.shortValue()));
     }
 
-    public void disableRateSlider() {
-        rateSlider.setDisable(true);
-    }
-
-    public void enableRateSlider() {
-        rateSlider.setDisable(false);
-    }
-
     public void openDiscordInvite() {
         try {
             java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://valnarrator.vercel.app/discord"));
@@ -402,6 +394,34 @@ public class ValNarratorController implements XMPPEventDispatcher {
         } catch (IOException | DataFormatException | InterruptedException e) {
             logger.error("Failed to sync valorant settings!");
             showAlert("Error!", "Failed to sync valorant settings, please try again later.");
+        }
+    }
+
+    public void mouseKeybindChange(javafx.scene.input.MouseEvent event) throws IOException {
+        if (!selectingKeybind) return;
+
+        final var buttonType = event.getButton();
+        switch(buttonType){
+            case MIDDLE -> {
+                Platform.runLater(() -> keybindTextField.setText("Middle Mouse Button"));
+                VoiceGenerator.getInstance().setKeyEvent(-2);
+                Platform.runLater(() -> keybindText.setText("Pick a keybind for team mic, currently set to Middle Mouse Button"));
+            }
+            case SECONDARY -> {
+                Platform.runLater(() -> keybindTextField.setText("Right Mouse Button"));
+                VoiceGenerator.getInstance().setKeyEvent(-3);
+                Platform.runLater(() -> keybindText.setText("Pick a keybind for team mic, currently set to Right Mouse Button"));
+            }
+            case BACK -> {
+                Platform.runLater(() -> keybindTextField.setText("Mouse Back Button"));
+                VoiceGenerator.getInstance().setKeyEvent(-4);
+                Platform.runLater(() -> keybindText.setText("Pick a keybind for team mic, currently set to Mouse Back Button"));
+            }
+            case FORWARD -> {
+                Platform.runLater(() -> keybindTextField.setText("Mouse Forward Button"));
+                VoiceGenerator.getInstance().setKeyEvent(-5);
+                Platform.runLater(() -> keybindText.setText("Pick a keybind for team mic, currently set to Mouse Forward Button"));
+            }
         }
     }
 

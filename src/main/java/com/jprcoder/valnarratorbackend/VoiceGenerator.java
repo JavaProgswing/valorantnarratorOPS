@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.*;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.*;
 import java.net.http.HttpResponse;
@@ -19,8 +20,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,11 +50,9 @@ public class VoiceGenerator {
     private static final VoiceGenerator singleton;
     private static final String CONFIG_FILE = "config.json";
     private static final int defaultKeyEvent = KeyEvent.VK_V;
-    private static final ResponseProcess isVoiceActive;
     private static final GsonBuilder builder;
     private static final ArrayList<String> normalVoices, neuralVoices;
     private static final List<String> inbuiltVoices;
-    private static final ConnectionHandler connectionHandler;
     private static final InbuiltVoiceSynthesizer synthesizer = new InbuiltVoiceSynthesizer();
     private static final AgentVoiceSynthesizer agentSynthesizer = new AgentVoiceSynthesizer();
     private static final PlaybackDetector playbackDetector = new PlaybackDetector();
@@ -78,18 +75,12 @@ public class VoiceGenerator {
         } catch (AWTException | IOException e) {
             throw new RuntimeException(e);
         }
-        try {
-            connectionHandler = new ConnectionHandler();
-        } catch (KeyManagementException | NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
         normalVoices = new ArrayList<>();
         neuralVoices = new ArrayList<>();
         neuralVoices.add("Kajal");
         inbuiltVoices = synthesizer.getAvailableVoices();
         builder = new GsonBuilder();
         builder.setPrettyPrinting();
-        isVoiceActive = new ResponseProcess();
     }
 
     private final Robot robot = new Robot();
@@ -112,17 +103,33 @@ public class VoiceGenerator {
             ValNarratorController.getLatestInstance().togglePrivateMessages();
         });
 
-        CompletableFuture.runAsync(() -> {
-            robot.keyPress(keyEvent);
-
-            while (isVoiceActive.isRunning()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException ignored) {
-                }
-            }
-            robot.keyRelease(keyEvent);
-        });
+        try {
+            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
+            long pid = ProcessHandle.current().pid();
+            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
+            long start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
+            command = fileLocation + " /unmute \"CABLE Output\"";
+            start = System.currentTimeMillis();
+            Runtime.getRuntime().exec(command);
+            logger.debug(String.format("(%d ms)Successfully unmuted the VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
+        } catch (IOException e) {
+            logger.error(String.format("SoundVolumeView.exe generated an error: %s", e));
+            e.printStackTrace();
+        }
+        LockFileHandler lockFileHandler = new LockFileHandler();
+        entitlement = ChatDataHandler.getInstance().getAPIHandler().getEntitlement(lockFileHandler);
+        accessToken = entitlement.accessToken();
+        riotClientDetails = ChatDataHandler.getInstance().getAPIHandler().getRiotClientDetails(lockFileHandler);
     }
 
     public static void initializeAgentSynthesizer() {
@@ -173,14 +180,12 @@ public class VoiceGenerator {
                 showAlert("Agent Voice", agentSynthesizer.getStatus());
                 return false;
             }
-            ValNarratorController.getLatestInstance().disableRateSlider();
         } else {
             if (ChatDataHandler.getInstance().getProperties().isQuotaExhausted() && voiceType == VoiceType.STANDARD) {
                 ValNarratorController.getLatestInstance().revertVoiceSelection();
                 showAlert("Quota Exhausted", "Your quota has been exhausted, please wait for the next refresh to continue using this voice!");
                 return false;
             }
-            ValNarratorController.getLatestInstance().enableRateSlider();
         }
         currentVoice = filterVoiceName(voice);
         currentVoiceType = voiceType;
@@ -207,40 +212,25 @@ public class VoiceGenerator {
         return newObjectAtIndex0;
     }
 
-    public void syncValorantPlayerSettings() throws IOException, DataFormatException, InterruptedException {
-        try {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            long pid = ProcessHandle.current().pid();
-            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
-            long start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start)));
-            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start)));
-            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
-            command = fileLocation + " /unmute \"CABLE Output\"";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Successfully unmuted the VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
-        } catch (IOException e) {
-            logger.error(String.format("SoundVolumeView.exe generated an error: %s", e));
-            e.printStackTrace();
+    private String getSettingsEventName(int keyEvent) {
+        if (keyEvent < 0) {
+            return switch (keyEvent) {
+                case -2 -> "MiddleMouseButton";
+                case -3 -> "RightMouseButton";
+                case -4 -> "ThumbMouseButton";
+                case -5 -> "ThumbMouseButton2";
+                default -> "MiddleMouseButton";
+            };
         }
-        LockFileHandler lockFileHandler = new LockFileHandler();
-        APIHandler apiHandler = new APIHandler(connectionHandler);
-        entitlement = apiHandler.getEntitlement(lockFileHandler);
-        accessToken = entitlement.accessToken();
-        riotClientDetails = apiHandler.getRiotClientDetails(lockFileHandler);
-        final String encodedSettings = apiHandler.getEncodedPlayerSettings(accessToken, riotClientDetails.version());
+        return KeyEvent.getKeyText(keyEvent);
+    }
+
+    public void syncValorantPlayerSettings() throws IOException, DataFormatException, InterruptedException {
+        final String encodedSettings = ChatDataHandler.getInstance().getAPIHandler().getEncodedPlayerSettings(accessToken, riotClientDetails.version());
         final String decodedSettingsJson = decodeBase64AndInflate(encodedSettings);
         final JsonObject settingsJson = JsonParser.parseString(decodedSettingsJson).getAsJsonObject();
         JsonArray actionMappings = settingsJson.getAsJsonArray("actionMappings");
-        final String keyEventName = KeyEvent.getKeyText(keyEvent);
+        final String keyEventName = getSettingsEventName(keyEvent);
         int totalKeyCount = 0, copyBindIndex = -1;
         final boolean hasHiddenDefaultKey;
         for (int i = 0; i < actionMappings.size(); i++) {
@@ -285,7 +275,7 @@ public class VoiceGenerator {
             }
         }
         logger.debug(String.valueOf(settingsJson));
-        apiHandler.setEncodedPlayerSettings(accessToken, riotClientDetails.version(), ZlibCompression.deflateAndBase64Encode(settingsJson.toString()));
+        ChatDataHandler.getInstance().getAPIHandler().setEncodedPlayerSettings(accessToken, riotClientDetails.version(), ZlibCompression.deflateAndBase64Encode(settingsJson.toString()));
 
         String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
         Process process = Runtime.getRuntime().exec(String.format("%s /GetColumnValue \"VB-Audio Virtual Cable\\Device\\CABLE Output\\Capture\" \"Item ID\"", fileLocation));
@@ -323,39 +313,71 @@ public class VoiceGenerator {
     }
 
     private void keybindChange(int keyEvent) {
-        String keyText = KeyEvent.getKeyText(keyEvent);
+        String keyText = getKeyName(keyEvent);
         if (!keyText.isEmpty()) {
             Platform.runLater(() -> ValNarratorController.getLatestInstance().keybindTextField.setText(keyText));
         }
         Platform.runLater(() -> ValNarratorController.getLatestInstance().keybindText.setText("Pick a keybind for team mic, currently set to " + keyText));
     }
 
-    public String getCurrentKeybind() {
+    public String getKeyName(int keyEvent) {
+        if (keyEvent < 0) {
+            return switch (keyEvent) {
+                case -2 -> "Middle Mouse Button";
+                case -3 -> "Right Mouse Button";
+                case -4 -> "Mouse Back Button";
+                case -5 -> "Mouse Forward Button";
+                default -> "N/A";
+            };
+        }
         return KeyEvent.getKeyText(keyEvent);
+    }
+
+    private void pressKey() {
+        logger.info(String.format("Pressing key: %s", getKeyName(keyEvent)));
+        if (keyEvent < 0) {
+            if (Math.abs(keyEvent) > MouseInfo.getNumberOfButtons()) {
+                logger.warn("Mouse does support button no: " + -keyEvent);
+                return;
+            }
+            switch (keyEvent) {
+                case -2 -> robot.mousePress(InputEvent.BUTTON2_DOWN_MASK);
+                case -3 -> robot.mousePress(InputEvent.BUTTON3_DOWN_MASK);
+                case -4 -> robot.mousePress(InputEvent.getMaskForButton(4));
+                case -5 -> robot.mousePress(InputEvent.getMaskForButton(5));
+                default -> logger.warn("Unknown mouse key: " + keyEvent);
+            }
+        } else {
+            robot.keyPress(keyEvent);
+        }
+    }
+
+    private void releaseKey() {
+        logger.info(String.format("Releasing key: %s", getKeyName(keyEvent)));
+        if (keyEvent < 0) {
+            if (Math.abs(keyEvent) > MouseInfo.getNumberOfButtons()) {
+                logger.warn("Mouse does support button no: " + -keyEvent);
+                return;
+            }
+            switch (keyEvent) {
+                case -2 -> robot.mouseRelease(InputEvent.BUTTON2_DOWN_MASK);
+                case -3 -> robot.mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
+                case -4 -> robot.mouseRelease(InputEvent.getMaskForButton(4));
+                case -5 -> robot.mouseRelease(InputEvent.getMaskForButton(5));
+                default -> logger.warn("Unknown mouse key: " + keyEvent);
+            }
+        } else {
+            robot.keyRelease(keyEvent);
+        }
     }
 
     public synchronized void setKeyEvent(int keyEvent) throws IOException {
         ValNarratorController.getLatestInstance().keybindTextField.setDisable(true);
         this.keyEvent = keyEvent;
         saveConfig();
-        logger.info("Set keybind to: {}", getCurrentKeybind());
-        try {
-            isVoiceActive.setFinished();
-        } catch (Exception ignored) {
-        }
-        isVoiceActive.reset();
-        ValNarratorController.getLatestInstance().keybindTextField.setDisable(false);
-        CompletableFuture.runAsync(() -> {
-            robot.keyPress(keyEvent);
 
-            while (isVoiceActive.isRunning()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException ignored) {
-                }
-            }
-            robot.keyRelease(keyEvent);
-        });
+        logger.info("Set keybind to: {}", getKeyName(keyEvent));
+        ValNarratorController.getLatestInstance().keybindTextField.setDisable(false);
     }
 
     private void createDefaultConfig() {
@@ -554,12 +576,12 @@ public class VoiceGenerator {
 
         @Override
         public void playbackStarted(PlaybackEvent evt) {
-            if (isTeamKeyEnabled) robot.keyPress(keyEvent);
+            if (isTeamKeyEnabled) pressKey();
         }
 
         @Override
         public void playbackFinished(PlaybackEvent evt) {
-            if (isTeamKeyEnabled) robot.keyRelease(keyEvent);
+            if (isTeamKeyEnabled) releaseKey();
         }
     }
 }

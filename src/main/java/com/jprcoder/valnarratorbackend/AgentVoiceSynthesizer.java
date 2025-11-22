@@ -49,8 +49,8 @@ public class AgentVoiceSynthesizer {
 
     // ----------------- VERSION & UPDATE CHECK -----------------
 
-    public void initialize(){
-        if(voiceServerProcess != null){
+    public void initialize() {
+        if (voiceServerProcess != null) {
             logger.warn("Voice server process is already running.");
             return;
         }
