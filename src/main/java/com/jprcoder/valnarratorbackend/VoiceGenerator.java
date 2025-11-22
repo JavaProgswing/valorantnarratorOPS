@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.*;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.*;
 import java.net.http.HttpResponse;
@@ -197,31 +196,21 @@ public class VoiceGenerator {
         return singleton;
     }
 
-    private static JsonObject getJsonObject(int value, String keyEventName) {
-        JsonObject newObjectAtIndex0 = new JsonObject();
-
-        newObjectAtIndex0.addProperty("alt", false);
-        newObjectAtIndex0.addProperty("bindIndex", value);
-        newObjectAtIndex0.addProperty("characterName", "None");
-        newObjectAtIndex0.addProperty("cmd", false);
-        newObjectAtIndex0.addProperty("ctrl", false);
-        newObjectAtIndex0.addProperty("name", "VOICE_TeamPTTAction");
-        newObjectAtIndex0.addProperty("key", keyEventName);
-        newObjectAtIndex0.addProperty("shift", false);
-        newObjectAtIndex0.addProperty("tapHoldType", "None");
-        return newObjectAtIndex0;
+    private static JsonObject getActionKey(int value, String keyEventName) {
+        JsonObject actionKey = new JsonObject();
+        actionKey.addProperty("alt", false);
+        actionKey.addProperty("bindIndex", value);
+        actionKey.addProperty("characterName", "None");
+        actionKey.addProperty("cmd", false);
+        actionKey.addProperty("ctrl", false);
+        actionKey.addProperty("name", "VOICE_TeamPTTAction");
+        actionKey.addProperty("key", keyEventName);
+        actionKey.addProperty("shift", false);
+        actionKey.addProperty("tapHoldType", "None");
+        return actionKey;
     }
 
     private String getSettingsEventName(int keyEvent) {
-        if (keyEvent < 0) {
-            return switch (keyEvent) {
-                case -2 -> "MiddleMouseButton";
-                case -3 -> "RightMouseButton";
-                case -4 -> "ThumbMouseButton";
-                case -5 -> "ThumbMouseButton2";
-                default -> "MiddleMouseButton";
-            };
-        }
         return KeyEvent.getKeyText(keyEvent);
     }
 
@@ -231,40 +220,30 @@ public class VoiceGenerator {
         final JsonObject settingsJson = JsonParser.parseString(decodedSettingsJson).getAsJsonObject();
         JsonArray actionMappings = settingsJson.getAsJsonArray("actionMappings");
         final String keyEventName = getSettingsEventName(keyEvent);
-        int totalKeyCount = 0, copyBindIndex = -1;
-        final boolean hasHiddenDefaultKey;
+        String prefKeyEventName = null;
         for (int i = 0; i < actionMappings.size(); i++) {
             JsonObject actionMapping = actionMappings.get(i).getAsJsonObject();
             String name = actionMapping.get("name").getAsString();
             if (name.equals("VOICE_TeamPTTAction")) {
-                copyBindIndex = actionMapping.get("bindIndex").getAsInt();
+                logger.debug("Found existing VOICE_TeamPTTAction keybind: {}", actionMapping);
+                if (actionMapping.get("bindIndex").getAsInt() == 0) {
+                    prefKeyEventName = actionMapping.get("key").getAsString();
+                }
                 actionMappings.remove(i);
                 i--;
-                totalKeyCount++;
             }
         }
-        hasHiddenDefaultKey = (totalKeyCount == 1 && copyBindIndex == 1);
 
-        JsonObject newObjectAtIndex0;
-        if (hasHiddenDefaultKey) {
-            newObjectAtIndex0 = new JsonObject();
-            JsonObject newObjectAtIndex1 = getJsonObject(1, "V");
+        JsonObject appKeybind = getActionKey(1, keyEventName);
+        logger.debug("App keybind: {}", appKeybind);
+        actionMappings.add(appKeybind);
 
-            newObjectAtIndex1.addProperty("alt", false);
-            newObjectAtIndex1.addProperty("bindIndex", 0);
-            newObjectAtIndex1.addProperty("characterName", "None");
-            newObjectAtIndex1.addProperty("cmd", false);
-            newObjectAtIndex1.addProperty("ctrl", false);
-            newObjectAtIndex1.addProperty("name", "VOICE_TeamPTTAction");
-            newObjectAtIndex1.addProperty("key", keyEventName);
-            newObjectAtIndex1.addProperty("shift", false);
-            newObjectAtIndex1.addProperty("tapHoldType", "None");
-
-            actionMappings.add(newObjectAtIndex1);
-        } else {
-            newObjectAtIndex0 = getJsonObject(0, keyEventName);
+        if (prefKeyEventName != null) {
+            JsonObject userPreferredKeybind = getActionKey(0, prefKeyEventName);
+            logger.debug("User preferred keybind: {}", userPreferredKeybind);
+            actionMappings.add(userPreferredKeybind);
         }
-        actionMappings.add(newObjectAtIndex0);
+
         JsonArray boolSettings = settingsJson.getAsJsonArray("boolSettings");
         for (int i = 0; i < boolSettings.size(); i++) {
             JsonObject boolSetting = boolSettings.get(i).getAsJsonObject();
@@ -321,54 +300,17 @@ public class VoiceGenerator {
     }
 
     public String getKeyName(int keyEvent) {
-        if (keyEvent < 0) {
-            return switch (keyEvent) {
-                case -2 -> "Middle Mouse Button";
-                case -3 -> "Right Mouse Button";
-                case -4 -> "Mouse Back Button";
-                case -5 -> "Mouse Forward Button";
-                default -> "N/A";
-            };
-        }
         return KeyEvent.getKeyText(keyEvent);
     }
 
     private void pressKey() {
         logger.info(String.format("Pressing key: %s", getKeyName(keyEvent)));
-        if (keyEvent < 0) {
-            if (Math.abs(keyEvent) > MouseInfo.getNumberOfButtons()) {
-                logger.warn("Mouse does support button no: " + -keyEvent);
-                return;
-            }
-            switch (keyEvent) {
-                case -2 -> robot.mousePress(InputEvent.BUTTON2_DOWN_MASK);
-                case -3 -> robot.mousePress(InputEvent.BUTTON3_DOWN_MASK);
-                case -4 -> robot.mousePress(InputEvent.getMaskForButton(4));
-                case -5 -> robot.mousePress(InputEvent.getMaskForButton(5));
-                default -> logger.warn("Unknown mouse key: " + keyEvent);
-            }
-        } else {
-            robot.keyPress(keyEvent);
-        }
+        robot.keyPress(keyEvent);
     }
 
     private void releaseKey() {
         logger.info(String.format("Releasing key: %s", getKeyName(keyEvent)));
-        if (keyEvent < 0) {
-            if (Math.abs(keyEvent) > MouseInfo.getNumberOfButtons()) {
-                logger.warn("Mouse does support button no: " + -keyEvent);
-                return;
-            }
-            switch (keyEvent) {
-                case -2 -> robot.mouseRelease(InputEvent.BUTTON2_DOWN_MASK);
-                case -3 -> robot.mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
-                case -4 -> robot.mouseRelease(InputEvent.getMaskForButton(4));
-                case -5 -> robot.mouseRelease(InputEvent.getMaskForButton(5));
-                default -> logger.warn("Unknown mouse key: " + keyEvent);
-            }
-        } else {
-            robot.keyRelease(keyEvent);
-        }
+        robot.keyRelease(keyEvent);
     }
 
     public synchronized void setKeyEvent(int keyEvent) throws IOException {
@@ -445,7 +387,7 @@ public class VoiceGenerator {
         File configFile = new File(configDir, CONFIG_FILE);
 
         try (FileWriter writer = new FileWriter(configFile)) {
-            JsonObject jsonObject = getJsonObject();
+            JsonObject jsonObject = getActionKey();
 
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             gson.toJson(jsonObject, writer);
@@ -454,7 +396,7 @@ public class VoiceGenerator {
         }
     }
 
-    private JsonObject getJsonObject() {
+    private JsonObject getActionKey() {
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("keyEvent", keyEvent);
         jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyEnabled);
