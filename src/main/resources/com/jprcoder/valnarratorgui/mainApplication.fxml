@@ -211,7 +211,7 @@
 
     </AnchorPane>
     <AnchorPane fx:id="panelSettings" layoutY="72.0" prefHeight="531.0" prefWidth="370.0"
-                style="-fx-background-color: transparent;">
+                style="-fx-background-color: transparent;" visible="false">
         <ImageView fitHeight="540.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
             <Image url="@appBackgroundBLUR.png"/>
         </ImageView>
@@ -285,9 +285,8 @@
             </font>
         </Label>
         <TextField fx:id="keybindTextField" layoutX="196.0" layoutY="194.0" onKeyPressed="#keybindChange"
-                   onMouseDragEntered="#enterKeybind"
-                   onMouseDragExited="#exitKeybind" onMouseEntered="#enterKeybind" onMouseExited="#exitKeybind"
-                   prefHeight="25.0" prefWidth="140.0" promptText="Press a key."/>
+                   onMouseDragEntered="#enterKeybind" onMouseDragExited="#exitKeybind" onMouseEntered="#enterKeybind"
+                   onMouseExited="#exitKeybind" prefHeight="25.0" prefWidth="140.0" promptText="Press a key."/>
         <JFXToggleButton fx:id="teamChatButton" layoutX="229.0" layoutY="248.0" onAction="#toggleTeamChat"
                          prefHeight="58.0" prefWidth="49.0" selected="true" text=" " toggleColor="WHITE"/>
         <Label layoutX="25.0" layoutY="244.0" prefHeight="13.0" prefWidth="117.0" text="TOGGLE TEAM KEY"
@@ -336,21 +335,11 @@
                 <Font size="9.0"/>
             </font>
         </Label>
-        <ComboBox fx:id="addIgnoredPlayer" layoutX="196.0" layoutY="366.0" onAction="#ignorePlayer" prefHeight="28.0"
-                  prefWidth="155.0" promptText="Add RiotId#RiotTag"
+        <ComboBox fx:id="playerDropdown" editable="true" layoutX="21.0" layoutY="420.0" onAction="#handlePlayerAction"
+                  prefHeight="28.0" prefWidth="334.0" promptText="Type to Ignore / Select to Toggle"
                   style="-fx-border-color: white; -fx-background-radius: 5em;" stylesheets="@comboBoxStyle.css">
             <items>
                 <FXCollections fx:factory="observableArrayList">
-                    <String fx:value="Add RiotId#RiotTag"/>
-                </FXCollections>
-            </items>
-        </ComboBox>
-        <ComboBox fx:id="removeIgnoredPlayer" layoutX="22.0" layoutY="424.0" onAction="#unignorePlayer"
-                  prefHeight="28.0" prefWidth="334.0" promptText="View/Remove RiotID#RiotTag"
-                  style="-fx-border-color: white; -fx-background-radius: 5em;" stylesheets="@comboBoxStyle.css">
-            <items>
-                <FXCollections fx:factory="observableArrayList">
-                    <String fx:value="View/Remove RiotID#RiotTag"/>
                 </FXCollections>
             </items>
         </ComboBox>
@@ -375,12 +364,12 @@
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Label>
-        <Label fx:id="userIDLabel" layoutX="142.0" layoutY="164.0" prefHeight="34.0" prefWidth="117.0" text="0000"
-               textFill="#f2efef" wrapText="true">
+        <TextField fx:id="userIDLabel" editable="false" layoutX="142.0" layoutY="164.0" prefHeight="34.0"
+                   prefWidth="117.0" styleClass="copyable-text-field" stylesheets="@styles.css" text="0000">
             <font>
                 <Font name="System Bold" size="9.0"/>
             </font>
-        </Label>
+        </TextField>
         <Label layoutX="25.0" layoutY="204.0" prefHeight="25.0" prefWidth="117.0" text="Quota left:" textFill="WHITE">
             <font>
                 <Font name="System Bold" size="12.0"/>
@@ -406,7 +395,7 @@
         <Button fx:id="subscribeButton" defaultButton="true" layoutX="27.0" layoutY="286.0" mnemonicParsing="false"
                 onAction="#browseSubscription" prefHeight="42.0" prefWidth="324.0"
                 style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
-                text="Get Premium" textAlignment="CENTER">
+                text="View subscription info" textAlignment="CENTER">
             <font>
                 <Font name="Candara Bold" size="20.0"/>
             </font>
@@ -459,7 +448,7 @@
         </ImageView>
     </AnchorPane>
     <AnchorPane fx:id="panelLogin" layoutY="73.0" prefHeight="313.0" prefWidth="386.0"
-                style="-fx-background-color: transparent;" visible="false">
+                style="-fx-background-color: transparent;">
         <ImageView fitHeight="292.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
             <Image url="@appBackgroundBLUR.png"/>
         </ImageView>

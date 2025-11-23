@@ -1,0 +1,171 @@
+/* Main Stylesheet for Valorant Narrator */
+
+.root {
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* --- Labels --- */
+
+.header-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.description-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #f2efef;
+    -fx-wrap-text: true;
+}
+
+.stat-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.title-label {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 28px;
+    -fx-text-fill: white; /* Fallback */
+}
+
+/* --- Buttons --- */
+
+.primary-button {
+    -fx-background-color: transparent;
+    -fx-border-color: white;
+    -fx-border-radius: 5em;
+    -fx-background-radius: 5em;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+    -fx-padding: 5 10 5 10;
+    -fx-transition: all 0.3s;
+}
+
+.primary-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-border-color: #ff4655; /* Valorant Red */
+}
+
+.primary-button:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.2);
+}
+
+.premium-button {
+    -fx-background-color: transparent;
+    -fx-border-color: #d4af37; /* Gold-ish */
+    -fx-border-radius: 5em;
+    -fx-background-radius: 5em;
+    -fx-cursor: hand;
+}
+
+.premium-button:hover {
+    -fx-background-color: rgba(212, 175, 55, 0.1);
+}
+
+/* --- ComboBox --- */
+
+.combo-box {
+    -fx-background-color: transparent;
+    -fx-border-color: white;
+    -fx-border-radius: 5em;
+    -fx-background-radius: 5em;
+    -fx-padding: 0 5 0 5;
+}
+
+.combo-box:hover {
+    -fx-border-color: #ff4655;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill: white;
+    -fx-background-color: #1C2C3C;
+}
+
+.combo-box .list-view {
+    -fx-background-color: #1C2C3C;
+    -fx-border-color: #ff4655;
+}
+
+.combo-box-popup .list-view .list-cell:filled:selected, .combo-box-popup .list-view .list-cell:filled:hover {
+    -fx-background-color: #ff4655;
+    -fx-text-fill: white;
+}
+
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow {
+    -fx-background-color: white;
+}
+
+/* --- Slider --- */
+
+.slider .track {
+    -fx-background-color: #4a4a4a;
+}
+
+.slider .thumb {
+    -fx-background-color: #ff4655;
+}
+
+.slider .axis {
+    -fx-tick-label-fill: white;
+}
+
+/* --- Toggle Button --- */
+
+.jfx-toggle-button {
+    -fx-text-fill: white;
+}
+
+.jfx-toggle-button .toggle-color {
+    -fx-background-color: #ff4655;
+}
+
+.jfx-toggle-button .un-toggle-color {
+    -fx-background-color: #555555;
+}
+
+/* --- Progress Bar --- */
+
+.progress-bar .track {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-background-radius: 5em;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #ff4655;
+    -fx-background-radius: 5em;
+}
+
+/* --- Text Field --- */
+.text-field {
+    -fx-background-color: rgba(28, 44, 60, 0.8);
+    -fx-text-fill: white;
+    -fx-border-color: white;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.text-field:focused {
+    -fx-border-color: #ff4655;
+}
+
+.copyable-text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #f2efef;
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-padding: 0;
+    -fx-cursor: text;
+}
+
+.copyable-text-field:focused {
+    -fx-border-color: transparent;
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+}

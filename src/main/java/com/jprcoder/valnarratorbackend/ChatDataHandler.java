@@ -37,7 +37,9 @@ public class ChatDataHandler {
         try {
             properties = new Chat(APIHandler.getQuotaLimit());
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated",
+                    "Please update to the latest ValNarrator update to resume app functioning.",
+                    com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
             throw new RuntimeException(e);
         }
         try {
@@ -65,7 +67,9 @@ public class ChatDataHandler {
         try {
             mq = APIHandler.getRequestQuota();
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated",
+                    "Please update to the latest ValNarrator update to resume app functioning.",
+                    com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
             throw new RuntimeException(e);
         }
         ValNarratorController.getLatestInstance().updateRequestQuota(mq);
@@ -110,7 +114,9 @@ public class ChatDataHandler {
                 logger.warn("Quota exhausted, {}", e.getMessage());
                 ValNarratorController.getLatestInstance().markQuotaExhausted();
             } catch (OutdatedVersioningException e) {
-                ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                ValNarratorApplication.showDialog("Version Outdated",
+                        "Please update to the latest ValNarrator update to resume app functioning.",
+                        com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
                 throw new RuntimeException(e);
             }
         });
@@ -124,14 +130,17 @@ public class ChatDataHandler {
             final String playerID = message.getUserId(), playerName = getPlayerName(playerID).trim();
             properties.getPlayerIDTable().put(playerID, playerName);
             properties.getPlayerNameTable().put(playerName, playerID);
-            ValNarratorController.getLatestInstance().addIgnoredPlayer.getItems().addAll(playerName);
+            Platform.runLater(
+                    () -> ValNarratorController.getLatestInstance().playerDropdown.getItems().addAll(playerName));
         }
     }
 
     public void updateQuota(final int remainingQuota) {
         Platform.runLater(() -> {
-            ValNarratorController.getLatestInstance().quotaLabel.setText(remainingQuota + "/" + properties.getQuotaLimit());
-            ValNarratorController.getLatestInstance().quotaBar.setProgress((double) remainingQuota / properties.getQuotaLimit());
+            ValNarratorController.getLatestInstance().quotaLabel
+                    .setText(remainingQuota + "/" + properties.getQuotaLimit());
+            ValNarratorController.getLatestInstance().quotaBar
+                    .setProgress((double) remainingQuota / properties.getQuotaLimit());
         });
     }
 

@@ -16,8 +16,8 @@ class PlaybackDetector {
     // Avg of last 200ms
     // 16-bit = 2 bytes
     // Debounce
-    private static final int DEBOUNCE_MS = 120;
-    private final float[] rollingDb = new float[20];      // min 10 samples
+    private static final int DEBOUNCE_MS = 20;
+    private final float[] rollingDb = new float[5];      // min 10 samples
     private final TargetDataLine line;
     private int rollPtr = 0;
     // Learned thresholds
@@ -113,7 +113,7 @@ class PlaybackDetector {
      * Read and process one audio chunk
      */
     private float readOnce() {
-        byte[] buf = new byte[2048];
+        byte[] buf = new byte[256];
         int n = line.read(buf, 0, buf.length);
 
         if (n <= 0) return -90;
@@ -191,7 +191,7 @@ class PlaybackDetector {
             try {
                 while (true) {
                     updateStateMachine();
-                    Thread.sleep(10);
+                    Thread.onSpinWait();
                 }
             } catch (Exception ignored) {
             }

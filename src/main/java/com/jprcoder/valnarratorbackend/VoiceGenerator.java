@@ -416,10 +416,7 @@ public class VoiceGenerator {
 
         while (!playbackDetector.isPlaying()) {
             if (System.currentTimeMillis() - start >= timeoutMs) return false;
-            try {
-                Thread.sleep(20);
-            } catch (InterruptedException ignored) {
-            }
+            Thread.onSpinWait();
         }
         return true;
     }
@@ -429,28 +426,26 @@ public class VoiceGenerator {
      */
     private void waitUntilDetectorSilent() {
         while (playbackDetector.isPlaying()) {
-            try {
-                Thread.sleep(40);
-            } catch (InterruptedException ignored) {
-            }
+            Thread.onSpinWait();
         }
     }
 
     private void handleAudioLifecycle(Runnable ttsTask) {
         if (isTeamKeyEnabled) {
-            robot.keyPress(keyEvent);
+            pressKey();
         }
-        // Wait for playback to end (audio detector becomes silent)
-        waitUntilDetectorSilent();
+        if (ttsTask != null) {
+            ttsTask.run();
+        }
 
         CompletableFuture.runAsync(() -> {
+            waitForAudioToStart(3000);
+
             try {
-                if (ttsTask != null) {
-                    ttsTask.run(); // Run the TTS playback
-                }
+                waitUntilDetectorSilent();
             } finally {
                 if (isTeamKeyEnabled) {
-                    robot.keyRelease(keyEvent);
+                    releaseKey();
                 }
             }
         });
@@ -506,8 +501,6 @@ public class VoiceGenerator {
             } catch (JavaLayerException e) {
                 logger.warn("Playback exception: {}", e.getMessage());
             }
-            CompletableFuture.runAsync(() -> handleAudioLifecycle(() -> {
-            }));
 
             return new AbstractMap.SimpleEntry<>(voiceType, httpResp);
         }
