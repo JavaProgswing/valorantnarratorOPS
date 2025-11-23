@@ -481,7 +481,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
         Platform.runLater(() -> {
             ValNarratorController.getLatestInstance().quotaLabel.setText("Quota Exhausted!");
             ValNarratorController.getLatestInstance().quotaBar.setProgress(0.0);
-            ValNarratorController.getLatestInstance().setPremiumDateLabel("No");
+            ValNarratorController.getLatestInstance().setPremiumDateLabel("N/A");
             try {
                 voices.getSelectionModel()
                         .select(String.format("%s, INBUILT", VoiceGenerator.getInbuiltVoices().get(0)));
@@ -501,7 +501,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 Platform.runLater(() -> {
                     ValNarratorController.getLatestInstance().windowTitle.setVisible(false);
                     ValNarratorController.getLatestInstance().premiumWindowTitle.setVisible(true);
-                    ValNarratorController.getLatestInstance().subscribeButton.setVisible(false);
+                    ValNarratorController.getLatestInstance().quotaLabel.setText("Unlimited, Enjoy!");
                     ValNarratorController.getLatestInstance()
                             .setPremiumDateLabel(String.format("Valid till %s", new SimpleDateFormat("dd/MM/yyyy HH:mm")
                                     .format(new Date(Long.parseLong(mq.premiumTill()) * 1000))));
@@ -512,7 +512,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                             mq.remainingQuota() + "/" + ChatDataHandler.getInstance().getProperties().getQuotaLimit());
                     ValNarratorController.getLatestInstance().quotaBar.setProgress((double) mq.remainingQuota()
                             / ChatDataHandler.getInstance().getProperties().getQuotaLimit());
-                    ValNarratorController.getLatestInstance().setPremiumDateLabel("No");
+                    ValNarratorController.getLatestInstance().setPremiumDateLabel("N/A");
                 });
             }
         }

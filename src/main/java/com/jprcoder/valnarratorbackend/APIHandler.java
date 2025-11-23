@@ -284,7 +284,8 @@ public class APIHandler {
         System.setProperty("aws.secretKey", response.headers().firstValue("aws-secret-access-key").get());
         System.setProperty("aws.sessionToken", response.headers().firstValue("aws-session-token").get());
         final MessageQuota messageQuota = new MessageQuota(Integer.parseInt(response.headers().firstValue("remainingQuota").get()), response.headers().firstValue("premiumTill").get(), Boolean.parseBoolean(response.headers().firstValue("premium").get()));
-        ChatDataHandler.getInstance().updateQuota(messageQuota.remainingQuota());
+
+        if (!messageQuota.isPremium()) ChatDataHandler.getInstance().updateQuota(messageQuota.remainingQuota());
         return messageQuota;
     }
 
@@ -381,20 +382,7 @@ public class APIHandler {
     }
 
     public String getSubscriptionURL() {
-        String jsonPayload = String.format("{\"plan_id\": \"%s\",\n\"quantity\": \"1\",\n\"custom_id\": \"%s\",\n\"application_context\": {\n\"shipping_preference\": \"NO_SHIPPING\",\n\"return_url\": \"%s/payment_return\",\n\"cancel_url\": \"%s/payment_cancel\"\n}\n}", getProperties().getProperty("paymentPlanID"), serialNumber, getProperties().getProperty("paymentLink"), getProperties().getProperty("paymentLink"));
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(getProperties().getProperty("paymentLink"))).POST(HttpRequest.BodyPublishers.ofString(jsonPayload)).setHeader("content-type", "application/json").build();
-
-        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
-        logger.debug(String.valueOf(response));
-        final String responseBody = response.body();
-        logger.debug(String.valueOf(responseBody));
-        if (response.statusCode() == 200) {
-            Optional<String> subscriptionHeader = response.headers().firstValue("subscriptionURL");
-            if (subscriptionHeader.isPresent()) {
-                return subscriptionHeader.get();
-            }
-        }
-        return null;
+        return String.format("https://valnarrator.vercel.app/?user-id=%s", serialNumber);
     }
 
     public boolean isPremium() {
