@@ -7,7 +7,6 @@ import ch.qos.logback.core.util.StatusPrinter;
 import com.google.gson.JsonSyntaxException;
 import com.jprcoder.valnarratorbackend.*;
 import com.jprcoder.valnarratorencryption.Encryption;
-import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import org.slf4j.Logger;
@@ -281,6 +280,7 @@ public class Main {
                 }
             }
 
+
         } else {
             try {
                 secretKey = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSign.bin").toString()).toCharArray();
@@ -295,7 +295,32 @@ public class Main {
                 throw new RuntimeException(e);
             }
         }
-        Application.launch(ValNarratorApplication.class, args);
+
+        try {
+            ReferralNotificationsResponse notif = fetchReferralNotifications();
+
+            if (notif.notifications != null && !notif.notifications.isEmpty()) {
+
+                StringBuilder builder = new StringBuilder();
+                builder.append("🎉 You’ve received new referral bonuses!\n\n");
+
+                for (ReferralNotification rn : notif.notifications) {
+                    long hours = rn.bonus_duration / 3600;
+                    long minutes = (rn.bonus_duration % 3600) / 60;
+
+                    builder.append(String.format("• %s used your referral → +%02d:%02d premium\n", rn.referred_user_id, hours, minutes));
+                }
+
+                builder.append("\nThank you for sharing ValNarrator! 🚀");
+
+                ValNarratorApplication.showDialog("Referral Rewards", builder.toString(), MessageType.INFORMATION_MESSAGE);
+            }
+
+        } catch (IOException | InterruptedException e) {
+            logger.error("Failed to fetch referral notifications!", e);
+        }
+
+//        Application.launch(ValNarratorApplication.class, args);
     }
 
     public static char[] getSecretKey() {

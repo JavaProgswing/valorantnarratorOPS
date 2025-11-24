@@ -207,6 +207,22 @@ public class APIHandler {
         throw new IllegalStateException("Referral submission failed with status code: " + response.statusCode());
     }
 
+    public static ReferralNotificationsResponse fetchReferralNotifications() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        Signature sign = SignatureValidator.generateRegistrationSignature(serialNumber);
+
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/referral/notifications?hwid=" + serialNumber)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            return new Gson().fromJson(response.body(), ReferralNotificationsResponse.class);
+        }
+
+        throw new IOException("Failed to fetch notifications: " + response.statusCode());
+    }
+
+
     public AbstractMap.Entry<HttpResponse<InputStream>, InputStream> speakVoice(String text, short rate, String currentVoice, VoiceEngineType engineType, String accessKeyID, String secretKey, String sessionToken) throws QuotaExhaustedException {
         String requestBody = String.format("{\"Engine\":\"%s\",\"OutputFormat\":\"mp3\",\"Text\":\"<speak><prosody rate='%d%%'>%s</prosody></speak>\",\"VoiceId\":\"%s\",\"TextType\":\"ssml\"}", engineType.toValue(), rate, text, currentVoice);
         TreeMap<String, String> preheaders = new TreeMap<>();
