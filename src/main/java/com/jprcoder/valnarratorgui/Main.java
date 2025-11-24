@@ -7,6 +7,7 @@ import ch.qos.logback.core.util.StatusPrinter;
 import com.google.gson.JsonSyntaxException;
 import com.jprcoder.valnarratorbackend.*;
 import com.jprcoder.valnarratorencryption.Encryption;
+import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import org.slf4j.Logger;
@@ -320,7 +321,7 @@ public class Main {
             logger.error("Failed to fetch referral notifications!", e);
         }
 
-//        Application.launch(ValNarratorApplication.class, args);
+        Application.launch(ValNarratorApplication.class, args);
     }
 
     public static char[] getSecretKey() {
