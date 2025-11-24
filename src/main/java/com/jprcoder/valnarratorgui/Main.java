@@ -5,10 +5,7 @@ import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import ch.qos.logback.core.util.StatusPrinter;
 import com.google.gson.JsonSyntaxException;
-import com.jprcoder.valnarratorbackend.AgentVoiceSynthesizer;
-import com.jprcoder.valnarratorbackend.OutdatedVersioningException;
-import com.jprcoder.valnarratorbackend.RegistrationInfo;
-import com.jprcoder.valnarratorbackend.VersionInfo;
+import com.jprcoder.valnarratorbackend.*;
 import com.jprcoder.valnarratorencryption.Encryption;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -237,6 +234,53 @@ public class Main {
             encryptSignup(ri.signature(), ri.salt());
             secretKey = ri.signature().toCharArray();
             secretSalt = ri.salt().toCharArray();
+
+            if (ValNarratorApplication.showConfirmationAlertAndWait("Support Your Friend!", "If someone referred you to ValNarrator, enter their User ID.\n" + "They’ll receive rewards, and you will unlock a bonus.")) {
+                String referrerId = ValNarratorApplication.showInputDialogAndWait("Referral", "Enter the referrer's User ID:");
+
+                if (referrerId == null || referrerId.trim().isEmpty()) {
+                    logger.debug("Referral skipped: empty input.");
+                    return;
+                }
+
+                referrerId = referrerId.trim();
+
+                while (!verifyReferralUser(referrerId)) {
+                    referrerId = ValNarratorApplication.showInputDialogAndWait("Invalid Referral", "Re-enter the referrer's User ID:");
+
+                    if (referrerId == null || referrerId.trim().isEmpty()) {
+                        logger.debug("Referral cancelled during correction.");
+                        return;
+                    }
+
+                    referrerId = referrerId.trim();
+                }
+                logger.info("Referral user validated: " + referrerId);
+                try {
+                    ReferralResponse referralResponse = submitReferral(referrerId);
+                    logger.info("Referral response: " + referralResponse);
+
+                    if ("ok".equals(referralResponse.status())) {
+                        long durationSeconds = referralResponse.duration();
+
+                        long days = durationSeconds / 86400;
+                        if (days > 0) {
+                            ValNarratorApplication.showDialog("Referral Success", String.format("Congrats! You've been granted premium for %d days.", days), MessageType.INFORMATION_MESSAGE);
+                            return;
+                        }
+                        long hours = durationSeconds / 3600;
+                        long minutes = (durationSeconds % 3600) / 60;
+
+                        ValNarratorApplication.showDialog("Referral Success", String.format("Congrats! You've been granted premium for %02d:%02d hours.", hours, minutes), MessageType.INFORMATION_MESSAGE);
+                    } else {
+                        ValNarratorApplication.showAlertAndWait("Referral Failed", "Referral couldn't be applied. Please try again later.");
+                    }
+                } catch (IllegalStateException e) {
+                    logger.error("Error during referral submission", e);
+                    ValNarratorApplication.showDialog("Referral Error", "An error occurred while processing your referral. Please try again later.", MessageType.ERROR_MESSAGE);
+                }
+            }
+
         } else {
             try {
                 secretKey = Encryption.decrypt(Paths.get(CONFIG_DIR, "secretSign.bin").toString()).toCharArray();

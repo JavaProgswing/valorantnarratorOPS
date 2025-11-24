@@ -52,8 +52,7 @@ public class ValNarratorApplication extends Application {
     public static CompletableFuture<Alert> showNonBlockingDialog(
             String headerText,
             String contentText,
-            MessageType messageType
-    ) {
+            MessageType messageType) {
         CompletableFuture<Alert> future = new CompletableFuture<>();
 
         FXInit.init();
@@ -72,7 +71,7 @@ public class ValNarratorApplication extends Application {
                 alert.setContentText(contentText);
                 alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
 
-                alert.show();  // runs on FX thread — safe
+                alert.show(); // runs on FX thread — safe
 
                 future.complete(alert);
             } catch (Exception e) {
@@ -82,7 +81,6 @@ public class ValNarratorApplication extends Application {
 
         return future;
     }
-
 
     public static void showInformation(String headerText, String contentText) {
         FXInit.init();
@@ -148,12 +146,39 @@ public class ValNarratorApplication extends Application {
         return userChoice.get();
     }
 
+    public static String showInputDialogAndWait(String headerText, String contentText) {
+        FXInit.init();
+        final CountDownLatch latch = new CountDownLatch(1);
+        final StringBuilder userInput = new StringBuilder();
+
+        Platform.runLater(() -> {
+            javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog();
+            dialog.setTitle("Valorant Narrator");
+            dialog.setHeaderText(headerText);
+            dialog.setContentText(contentText);
+
+            Optional<String> result = dialog.showAndWait();
+            result.ifPresent(userInput::append);
+
+            latch.countDown();
+        });
+
+        try {
+            latch.await();
+        } catch (InterruptedException ignored) {
+            logger.error("Interrupted while waiting for user input dialog.", ignored);
+        }
+
+        return !userInput.isEmpty() ? userInput.toString() : null;
+    }
+
     @Override
     public void start(Stage stage) throws IOException, AWTException {
         CompletableFuture.runAsync(() -> {
             logger.debug("Trying to play start-up tune.");
             long startTime = System.currentTimeMillis();
-            try (InputStream is = Objects.requireNonNull(ValNarratorApplication.class.getResourceAsStream("startupTune.mp3"))) {
+            try (InputStream is = Objects
+                    .requireNonNull(ValNarratorApplication.class.getResourceAsStream("startupTune.mp3"))) {
                 AdvancedPlayer player = new AdvancedPlayer(is);
                 player.play();
                 logger.debug(String.format("Finished playing tune in %d ms.", System.currentTimeMillis() - startTime));
@@ -202,7 +227,8 @@ public class ValNarratorApplication extends Application {
 
     public void showProgramIsMinimizedMsg() {
         if (firstTime) {
-            trayIcon.displayMessage("Minimized to tray.", "Valorant Narrator is still running.", TrayIcon.MessageType.INFO);
+            trayIcon.displayMessage("Minimized to tray.", "Valorant Narrator is still running.",
+                    TrayIcon.MessageType.INFO);
             firstTime = false;
         }
     }

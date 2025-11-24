@@ -88,7 +88,7 @@ public class APIHandler {
             throw new IOException("API Service is down, please try again");
         }
         if (response.statusCode() == 409) {
-            return new RegistrationInfo(false, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
+            return new RegistrationInfo(false, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get(), Boolean.parseBoolean(response.headers().firstValue("Referred").get()));
         }
         if (response.statusCode() == 426) {
             throw new OutdatedVersioningException();
@@ -97,7 +97,7 @@ public class APIHandler {
             logger.debug("Unauthorized request, retrying... x{}", currentCount);
             return fetchRegistrationInfo(currentCount + 1, retryCount);
         }
-        return new RegistrationInfo(true, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get());
+        return new RegistrationInfo(true, response.headers().firstValue("Signature").get(), response.headers().firstValue("Salt").get(), Boolean.parseBoolean(response.headers().firstValue("Referred").get()));
     }
 
     public static void downloadAgentVoice(ProgressCallback callback) throws IOException, InterruptedException {
@@ -138,7 +138,6 @@ public class APIHandler {
         Files.copy(temp.toPath(), outFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
 
-
     public static void downloadLatestVersion() throws IOException {
         final String installerLocation = Paths.get(System.getenv("Temp"), "ValorantNarrator").toString();
         URL url;
@@ -177,6 +176,35 @@ public class APIHandler {
 
         logger.debug("Starting installer from {}", installerLocation);
         Runtime.getRuntime().exec(String.format("cmd.exe /K \"cd %s && %s /silent\"", installerLocation, installerName));
+    }
+
+    public static boolean verifyReferralUser(String userId) {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request;
+        try {
+            request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/user/" + userId)).build();
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+        HttpResponse<String> response = retryUntilSuccess(client, request, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
+        return response.statusCode() == 200;
+    }
+
+    public static ReferralResponse submitReferral(String referrerId) {
+        HttpClient client = HttpClient.newHttpClient();
+        Signature sign = SignatureValidator.generateRegistrationSignature(serialNumber);
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(valAPIUrl + "/refer?hwid=" + serialNumber + "&referrer=" + referrerId)).setHeader("Authorization", sign.signature()).setHeader("epochTimeElapsed", String.valueOf(sign.epochTime())).build();
+        HttpResponse<String> response = retryUntilSuccess(client, request, HttpResponse.BodyHandlers.ofString());
+        logger.debug(String.valueOf(response));
+        final String responseBody = response.body();
+        logger.debug(String.valueOf(responseBody));
+        if (response.statusCode() == 201) {
+            return new Gson().fromJson(responseBody, ReferralResponse.class);
+        }
+        throw new IllegalStateException("Referral submission failed with status code: " + response.statusCode());
     }
 
     public AbstractMap.Entry<HttpResponse<InputStream>, InputStream> speakVoice(String text, short rate, String currentVoice, VoiceEngineType engineType, String accessKeyID, String secretKey, String sessionToken) throws QuotaExhaustedException {
@@ -301,6 +329,10 @@ public class APIHandler {
         return new Gson().fromJson(responseBody, EntitlementsTokenResponse.class);
     }
 
+    public String getClientPlatform() {
+        return "ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9";
+    }
+
     public ArrayList<PlayerAccount> getPlayerNames(final String accessToken, final RiotClientDetails riotClientDetails, final String entitlementToken, final ArrayList<String> playerIDs) {
         final Gson gson = new Gson();
         HttpRequest playerReq = HttpRequest.newBuilder().uri(URI.create(String.format("https://pd.%s.a.pvp.net/name-service/v2/players", riotClientDetails.subject_deployment()))).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-Entitlements-JWT", entitlementToken).header("X-Riot-ClientVersion", riotClientDetails.version()).PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(playerIDs))).build();
@@ -356,9 +388,16 @@ public class APIHandler {
         return new RiotClientDetails(version, subject_id, subject_deployment);
     }
 
+    public String getSubscriptionURL() {
+        return String.format("https://valnarrator.vercel.app/?user-id=%s", serialNumber);
+    }
 
-    public String getClientPlatform() {
-        return "ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9";
+    public boolean isPremium() {
+        return isPremium;
+    }
+
+    public void setPremium(boolean premium) {
+        isPremium = premium;
     }
 
     public String getEncodedPlayerSettings(final String accessToken, final String version) {
@@ -379,17 +418,5 @@ public class APIHandler {
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
         logger.debug(String.valueOf(responseBody));
-    }
-
-    public String getSubscriptionURL() {
-        return String.format("https://valnarrator.vercel.app/?user-id=%s", serialNumber);
-    }
-
-    public boolean isPremium() {
-        return isPremium;
-    }
-
-    public void setPremium(boolean premium) {
-        isPremium = premium;
     }
 }
