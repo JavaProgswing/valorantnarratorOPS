@@ -98,44 +98,28 @@ public class Chat {
         return allState;
     }
 
-    public void setSelfEnabled() {
-        selfState = true;
-    }
-
-    public void setPartyEnabled() {
-        partyState = true;
-    }
-
     public void setPrivateEnabled() {
         privateState = true;
-    }
-
-    public void setTeamEnabled() {
-        teamState = true;
-    }
-
-    public void setAllEnabled() {
-        allState = true;
-    }
-
-    public void setSelfDisabled() {
-        selfState = false;
-    }
-
-    public void setPartyDisabled() {
-        partyState = false;
     }
 
     public void setPrivateDisabled() {
         privateState = false;
     }
 
-    public void setTeamDisabled() {
-        teamState = false;
+    public void setSelf(boolean state) {
+        selfState = state;
     }
 
-    public void setAllDisabled() {
-        allState = false;
+    public void setParty(boolean state) {
+        partyState = state;
+    }
+
+    public void setTeam(boolean state) {
+        teamState = state;
+    }
+
+    public void setAll(boolean state) {
+        allState = state;
     }
 
 }

@@ -41,6 +41,7 @@ public class Main {
     public static final String LOCK_FILE_NAME = "lockFile";
     public static final String LOCK_FILE = Paths.get(CONFIG_DIR, LOCK_FILE_NAME).toString();
     public static final String installerName = "ValNarrator-setup.exe";
+    public static String API_URL;
     public static double currentVersion;
     private static Properties properties;
     private static char[] secretKey, secretSalt;
@@ -139,6 +140,7 @@ public class Main {
         }
         String fullVersioning = properties.getProperty("version");
         currentVersion = Double.parseDouble(fullVersioning);
+        API_URL = properties.getProperty("apiBaseUrl");
         boolean insMessage = Arrays.asList(args).contains("-showInstallationPrompt");
         if (insMessage && args.length == 1) {
 
@@ -208,10 +210,12 @@ public class Main {
                         logger.error("CRITICAL: Could not find latest versioning info, trying again in a second!");
                     }
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(5 * 60 * 1000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+                } else {
+                    Thread.sleep(30 * 1000);
                 }
             }
         }

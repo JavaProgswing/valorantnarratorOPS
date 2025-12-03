@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.jprcoder.valnarratorencryption.Signature;
 import com.jprcoder.valnarratorencryption.SignatureValidator;
+import com.jprcoder.valnarratorgui.Main;
 import com.jprcoder.valnarratorgui.ValNarratorApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,7 @@ record SettingsData(String data, String type) {
 
 public class APIHandler {
     private static final Logger logger = LoggerFactory.getLogger(APIHandler.class);
-    private static final String valAPIUrl = "https://api-valnarrator.vercel.app";
+    private static final String valAPIUrl = Main.API_URL;
     private final ConnectionHandler connectionHandler;
     private boolean isPremium = false;
 

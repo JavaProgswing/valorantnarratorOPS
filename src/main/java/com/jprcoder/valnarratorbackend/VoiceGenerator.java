@@ -19,10 +19,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.AbstractMap;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.zip.DataFormatException;
 
@@ -30,19 +28,6 @@ import static com.jprcoder.valnarratorbackend.VoiceType.fromString;
 import static com.jprcoder.valnarratorbackend.ZlibCompression.decodeBase64AndInflate;
 import static com.jprcoder.valnarratorgui.Main.CONFIG_DIR;
 import static com.jprcoder.valnarratorgui.ValNarratorApplication.showAlert;
-
-enum Sources {
-    SELF, PARTY, TEAM, SELF_PARTY, SELF_TEAM, PARTY_TEAM, PARTY_TEAM_ALL, SELF_PARTY_TEAM, SELF_TEAM_ALL, SELF_PARTY_TEAM_ALL;
-
-    public static Sources fromString(String text) {
-        for (Sources value : Sources.values()) {
-            if (value.name().equalsIgnoreCase(text)) {
-                return value;
-            }
-        }
-        throw new IllegalArgumentException(String.format("No constant with text %s found in enum Sources!", text));
-    }
-}
 
 public class VoiceGenerator {
     private static final Logger logger = LoggerFactory.getLogger(VoiceGenerator.class);
@@ -61,7 +46,7 @@ public class VoiceGenerator {
     private static boolean isSystemMicStreamed = false;
     private static boolean isPrivateMessagesEnabled = false;
     private static String currentVoice = "Matthew";
-    private static Sources currentSource = Sources.SELF;
+    private static EnumSet<Source> currentSource = Source.fromString("SELF");
     private static VoiceType currentVoiceType = VoiceType.STANDARD;
     private static short currentVoiceRate = 100;
     private static RiotClientDetails riotClientDetails;
@@ -92,7 +77,7 @@ public class VoiceGenerator {
 
         Platform.runLater(() -> ValNarratorController.getLatestInstance().teamChatButton.setSelected(isTeamKeyEnabled));
         Platform.runLater(() -> ValNarratorController.getLatestInstance().valorantSettings.setSelected(syncValorantSettingsToggle));
-        Platform.runLater(() -> ValNarratorController.getLatestInstance().sources.getSelectionModel().select(currentSource.name().replace("_", "+")));
+        Platform.runLater(() -> ValNarratorController.getLatestInstance().sources.getSelectionModel().select(Source.toString(currentSource)));
         Platform.runLater(() -> {
             ValNarratorController.getLatestInstance().micButton.setSelected(isSystemMicStreamed);
             ValNarratorController.getLatestInstance().toggleMic();
@@ -128,7 +113,7 @@ public class VoiceGenerator {
         LockFileHandler lockFileHandler = new LockFileHandler();
         entitlement = ChatDataHandler.getInstance().getAPIHandler().getEntitlement(lockFileHandler);
         accessToken = entitlement.accessToken();
-        riotClientDetails = ChatDataHandler.getInstance().getAPIHandler().getRiotClientDetails(lockFileHandler);
+        CompletableFuture.runAsync(() -> riotClientDetails = ChatDataHandler.getInstance().getAPIHandler().getRiotClientDetails(lockFileHandler));
     }
 
     public static void initializeAgentSynthesizer() {
@@ -328,7 +313,7 @@ public class VoiceGenerator {
         jsonObject.addProperty("keyEvent", defaultKeyEvent);
         jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyEnabled);
         jsonObject.addProperty("syncValorantSettingsToggle", syncValorantSettingsToggle);
-        jsonObject.addProperty("sources", currentSource.name());
+        jsonObject.addProperty("sources", Source.toString(currentSource));
         jsonObject.addProperty("isSystemMicStreamed", isSystemMicStreamed);
         jsonObject.addProperty("isPrivateMessagesEnabled", isPrivateMessagesEnabled);
 
@@ -356,7 +341,7 @@ public class VoiceGenerator {
                     syncValorantSettingsToggle = jsonObject.get("syncValorantSettingsToggle").getAsBoolean();
                 }
                 if (jsonObject.has("sources")) {
-                    currentSource = Sources.fromString(jsonObject.get("sources").getAsString());
+                    currentSource = Source.fromString(jsonObject.get("sources").getAsString());
                 }
                 if (jsonObject.has("isSystemMicStreamed")) {
                     isSystemMicStreamed = jsonObject.get("isSystemMicStreamed").getAsBoolean();
@@ -375,7 +360,7 @@ public class VoiceGenerator {
     }
 
     public void loadCurrentSource(final String sourceName) {
-        currentSource = Sources.fromString(sourceName.replace("+", "_"));
+        currentSource = Source.fromString(sourceName.replace("+", "_"));
     }
 
     public void saveConfig() throws IOException {
@@ -401,7 +386,7 @@ public class VoiceGenerator {
         jsonObject.addProperty("keyEvent", keyEvent);
         jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyEnabled);
         jsonObject.addProperty("syncValorantSettingsToggle", syncValorantSettingsToggle);
-        jsonObject.addProperty("sources", currentSource.name());
+        jsonObject.addProperty("sources", Source.toString(currentSource));
         jsonObject.addProperty("isSystemMicStreamed", isSystemMicStreamed);
         jsonObject.addProperty("isPrivateMessagesEnabled", isPrivateMessagesEnabled);
         return jsonObject;

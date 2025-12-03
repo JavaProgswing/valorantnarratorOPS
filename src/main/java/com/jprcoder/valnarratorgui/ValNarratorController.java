@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
@@ -175,24 +176,20 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
         logger.info("Closed XMPP, riot-client, valorant in {} ms.", (System.currentTimeMillis() - start));
         try {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe",
-                    System.getenv("ProgramFiles").replace("\\", "/"));
+            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
             long pid = ProcessHandle.current().pid();
             String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
             start = System.currentTimeMillis();
             Runtime.getRuntime().exec(command);
-            logger.debug("({} ms)Successfully set the app's output to VB-Audio CABLE Input.",
-                    (System.currentTimeMillis() - start));
+            logger.debug("({} ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start));
             command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
             start = System.currentTimeMillis();
             Runtime.getRuntime().exec(command);
-            logger.debug("({} ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.",
-                    (System.currentTimeMillis() - start));
+            logger.debug("({} ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start));
             command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
             start = System.currentTimeMillis();
             Runtime.getRuntime().exec(command);
-            logger.debug("({} ms)Successfully set the listen-in to true on VB-Audio CABLE Output.",
-                    (System.currentTimeMillis() - start));
+            logger.debug("({} ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start));
         } catch (IOException e) {
             logger.error("SoundVolumeView.exe generated an error: {}", e);
             e.printStackTrace();
@@ -200,8 +197,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
         logger.info("Initialized app's sound output.");
         logger.info("Initializing xmpp-node.");
         try {
-            final String xmppPath = String.format("%s/ValorantNarrator/valorantNarrator-xmpp.exe",
-                    System.getenv("ProgramFiles").replace("\\", "/"));
+            final String xmppPath = String.format("%s/ValorantNarrator/valorantNarrator-xmpp.exe", System.getenv("ProgramFiles").replace("\\", "/"));
             ProcessBuilder processBuilder = new ProcessBuilder(xmppPath);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
@@ -212,16 +208,14 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
                 while (true) {
                     try {
-                        if ((line = reader.readLine()) == null)
-                            break;
+                        if ((line = reader.readLine()) == null) break;
                     } catch (IOException e) {
                         logger.error("Reading Xmpp-Node's output generated an error: {}", e);
                         throw new RuntimeException(e);
                     }
 
                     try {
-                        if (line.isEmpty())
-                            continue;
+                        if (line.isEmpty()) continue;
 
                         JsonElement element = JsonParser.parseString(line);
                         if (!element.isJsonObject() || element.isJsonNull()) {
@@ -229,16 +223,14 @@ public class ValNarratorController implements XMPPEventDispatcher {
                         }
                         JsonObject json = gson.fromJson(line, JsonObject.class);
                         if (json.get("type").getAsString().equals("error")) {
-                            ValNarratorController.getLatestInstance().dispatchError(
-                                    new XMPPError(json.get("reason").getAsString(), json.get("code").getAsInt()));
+                            ValNarratorController.getLatestInstance().dispatchError(new XMPPError(json.get("reason").getAsString(), json.get("code").getAsInt()));
                         } else {
                             if (json.get("type") == null || json.get("time") == null) {
                                 logger.warn("Received an invalid event: {}", line);
                                 continue;
                             }
                             final String jsonData = (json.get("data") == null) ? "" : json.get("data").getAsString();
-                            XMPPEvent event = new XMPPEvent(json.get("type").getAsString(),
-                                    json.get("time").getAsLong(), jsonData);
+                            XMPPEvent event = new XMPPEvent(json.get("type").getAsString(), json.get("time").getAsLong(), jsonData);
                             final String xml = event.data();
                             if (event.type().equals("incoming")) {
                                 Pattern idPattern = Pattern.compile("id='(.*?)'");
@@ -247,14 +239,12 @@ public class ValNarratorController implements XMPPEventDispatcher {
                                 Pattern jidPattern = Pattern.compile("<jid>(.*?)</jid>");
                                 Matcher jidMatcher = jidPattern.matcher(xml);
                                 String jid = jidMatcher.find() ? jidMatcher.group(1).split("@")[0] : null;
-                                if (ChatDataHandler.getInstance().getProperties().getSelfID() == null && id != null
-                                        && id.equals("_xmpp_bind1")) {
+                                if (ChatDataHandler.getInstance().getProperties().getSelfID() == null && id != null && id.equals("_xmpp_bind1")) {
                                     logger.debug("Set Self ID to {}", jid);
                                     ChatDataHandler.getInstance().getProperties().setSelfID(jid);
                                 }
                                 ValNarratorController.getLatestInstance().dispatchEvent(event);
-                                if (!ValNarratorController.getLatestInstance().isLoading()
-                                        && ChatDataHandler.getInstance().getProperties().isDisabled()) {
+                                if (!ValNarratorController.getLatestInstance().isLoading() && ChatDataHandler.getInstance().getProperties().isDisabled()) {
                                     continue;
                                 }
 
@@ -266,40 +256,6 @@ public class ValNarratorController implements XMPPEventDispatcher {
                             } else {
                                 if (xml.startsWith("<message")) {
                                     logger.debug("Sent: {}", xml);
-                                }
-
-                                if (event.type().equals("close-riot") || event.type().equals("close-valorant")) {
-                                    try {
-                                        String command1 = "taskkill /F /IM valorantNarrator-xmpp.exe";
-                                        ProcessBuilder processBuilder1 = new ProcessBuilder(command1.split("\\s+"));
-                                        processBuilder1.redirectErrorStream(true);
-                                        Process process1 = processBuilder1.start();
-                                        int code1 = process1.waitFor();
-                                        if (code1 == 0) {
-                                            logger.info("Forcefully closed XMPP!");
-                                        }
-                                    } catch (Exception e) {
-                                        logger.error("Killing XMPP generated an error: {}", e);
-                                        e.printStackTrace();
-                                    }
-
-                                    try {
-                                        String command2 = "taskkill /F /IM valorantNarrator-agentVoices.exe";
-                                        ProcessBuilder processBuilder2 = new ProcessBuilder(command2.split("\\s+"));
-                                        processBuilder2.redirectErrorStream(true);
-                                        Process process2 = processBuilder2.start();
-                                        int code2 = process2.waitFor();
-                                        if (code2 == 0) {
-                                            logger.info("Forcefully closed valorantNarrator-agentVoices!");
-                                        }
-                                    } catch (Exception e) {
-                                        logger.error("Killing valorantNarrator-agentVoices generated an error: {}", e);
-                                        e.printStackTrace();
-                                    }
-                                    ValNarratorApplication.showAlert("Warning",
-                                            "Valorant or Riot client has been closed, application will close in 5 seconds.");
-                                    Thread.sleep(5000);
-                                    System.exit(0);
                                 }
                             }
 
@@ -329,14 +285,12 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 }
                 if (System.currentTimeMillis() - startTime > 30_000 && !warningTriggered) {
                     logger.warn("Loading is taking longer than expected...");
-                    Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel
-                            .setText("Preparing to start valorant, this may take a while..."));
+                    Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Preparing to start valorant, this may take a while..."));
                     warningTriggered = true;
                 }
                 if (ValNarratorController.getLatestInstance().progressLogin.getProgress() >= 1)
                     Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLogin.setProgress(0));
-                Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLogin
-                        .setProgress(ValNarratorController.getLatestInstance().progressLogin.getProgress() + 0.025));
+                Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLogin.setProgress(ValNarratorController.getLatestInstance().progressLogin.getProgress() + 0.025));
             }
             Platform.runLater(() -> {
                 ValNarratorController.getLatestInstance().progressLogin.setProgress(1);
@@ -350,8 +304,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
             VoiceGenerator.generateSingleton();
             Platform.runLater(() -> {
                 ArrayList<String> inbuiltVoiceNames = new ArrayList<>();
-                VoiceGenerator.getInbuiltVoices()
-                        .forEach((n) -> inbuiltVoiceNames.add(String.format("%s, INBUILT", n)));
+                VoiceGenerator.getInbuiltVoices().forEach((n) -> inbuiltVoiceNames.add(String.format("%s, INBUILT", n)));
                 ValNarratorController.getLatestInstance().voices.getItems().addAll(inbuiltVoiceNames);
 
                 // Populate player dropdown
@@ -361,8 +314,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                     for (String playerName : properties.getPlayerNameTable().keySet()) {
                         String playerID = properties.getPlayerNameTable().get(playerName);
                         if (properties.isIgnoredPlayerID(playerID)) {
-                            ValNarratorController.getLatestInstance().playerDropdown.getItems()
-                                    .add(playerName + " (IGNORED)");
+                            ValNarratorController.getLatestInstance().playerDropdown.getItems().add(playerName + " (IGNORED)");
                         } else {
                             ValNarratorController.getLatestInstance().playerDropdown.getItems().add(playerName);
                         }
@@ -377,8 +329,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
             }
         });
 
-        rateSlider.valueProperty()
-                .addListener((observable, oldValue, newValue) -> VoiceGenerator.setCurrentRate(newValue.shortValue()));
+        rateSlider.valueProperty().addListener((observable, oldValue, newValue) -> VoiceGenerator.setCurrentRate(newValue.shortValue()));
     }
 
     public void openDiscordInvite() {
@@ -393,13 +344,11 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void handlePlayerAction() {
         String player = playerDropdown.getValue();
-        if (player == null || player.trim().isEmpty())
-            return;
+        if (player == null || player.trim().isEmpty()) return;
 
         // Check if the player is already in the list (ignoring the suffix)
         String cleanPlayerName = player.replace(" (IGNORED)", "");
-        boolean isIgnored = ChatDataHandler.getInstance().getProperties().isIgnoredPlayerID(
-                ChatDataHandler.getInstance().getProperties().getPlayerNameTable().get(cleanPlayerName));
+        boolean isIgnored = ChatDataHandler.getInstance().getProperties().isIgnoredPlayerID(ChatDataHandler.getInstance().getProperties().getPlayerNameTable().get(cleanPlayerName));
 
         if (isIgnored) {
             // Unignore
@@ -430,11 +379,9 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void syncValorantSettingsToggle() throws IOException {
         if (VoiceGenerator.getInstance().syncValorantSettingsToggle()) {
-            Platform.runLater(() -> showInformation("Voice Settings SYNC",
-                    "Enabled, Valorant settings will be synced at next start-up!"));
+            Platform.runLater(() -> showInformation("Voice Settings SYNC", "Enabled, Valorant settings will be synced at next start-up!"));
         } else {
-            Platform.runLater(() -> showInformation("Voice Settings SYNC",
-                    "Disabled, Valorant settings will not be synced at next start-up!"));
+            Platform.runLater(() -> showInformation("Voice Settings SYNC", "Disabled, Valorant settings will not be synced at next start-up!"));
         }
     }
 
@@ -449,8 +396,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
     }
 
     public void keybindChange(javafx.scene.input.KeyEvent event) throws IOException {
-        if (!selectingKeybind)
-            return;
+        if (!selectingKeybind) return;
 
         KeyCode keyCode = event.getCode();
         String keyText = keyCode.getName();
@@ -483,10 +429,8 @@ public class ValNarratorController implements XMPPEventDispatcher {
             ValNarratorController.getLatestInstance().quotaBar.setProgress(0.0);
             ValNarratorController.getLatestInstance().setPremiumDateLabel("N/A");
             try {
-                voices.getSelectionModel()
-                        .select(String.format("%s, INBUILT", VoiceGenerator.getInbuiltVoices().get(0)));
-                ValNarratorApplication.showAlert("Quota Exhausted!",
-                        "An inbuilt voice has been automatically selected.");
+                voices.getSelectionModel().select(String.format("%s, INBUILT", VoiceGenerator.getInbuiltVoices().get(0)));
+                ValNarratorApplication.showAlert("Quota Exhausted!", "An inbuilt voice has been automatically selected.");
             } catch (IndexOutOfBoundsException e) {
                 ValNarratorApplication.showAlert("Quota Exhausted!", "Please try again later at 00:00 UTC.");
             }
@@ -502,16 +446,12 @@ public class ValNarratorController implements XMPPEventDispatcher {
                     ValNarratorController.getLatestInstance().windowTitle.setVisible(false);
                     ValNarratorController.getLatestInstance().premiumWindowTitle.setVisible(true);
                     ValNarratorController.getLatestInstance().quotaLabel.setText("Unlimited, Enjoy!");
-                    ValNarratorController.getLatestInstance()
-                            .setPremiumDateLabel(String.format("Valid till %s", new SimpleDateFormat("dd/MM/yyyy HH:mm")
-                                    .format(new Date(Long.parseLong(mq.premiumTill()) * 1000))));
+                    ValNarratorController.getLatestInstance().setPremiumDateLabel(String.format("Valid till %s", new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(Long.parseLong(mq.premiumTill()) * 1000))));
                 });
             } else {
                 Platform.runLater(() -> {
-                    ValNarratorController.getLatestInstance().quotaLabel.setText(
-                            mq.remainingQuota() + "/" + ChatDataHandler.getInstance().getProperties().getQuotaLimit());
-                    ValNarratorController.getLatestInstance().quotaBar.setProgress((double) mq.remainingQuota()
-                            / ChatDataHandler.getInstance().getProperties().getQuotaLimit());
+                    ValNarratorController.getLatestInstance().quotaLabel.setText(mq.remainingQuota() + "/" + ChatDataHandler.getInstance().getProperties().getQuotaLimit());
+                    ValNarratorController.getLatestInstance().quotaBar.setProgress((double) mq.remainingQuota() / ChatDataHandler.getInstance().getProperties().getQuotaLimit());
                     ValNarratorController.getLatestInstance().setPremiumDateLabel("N/A");
                 });
             }
@@ -568,19 +508,15 @@ public class ValNarratorController implements XMPPEventDispatcher {
         if (event.getTarget() == btnPower) {
             if (ChatDataHandler.getInstance().getProperties().toggleState()) {
                 if (!isValorantRunning()) {
-                    if (showConfirmationAlertAndWait("Confirmation",
-                            "Valorant isn't running, do you want to close this app?")) {
+                    if (showConfirmationAlertAndWait("Confirmation", "Valorant isn't running, do you want to close this app?")) {
                         logger.info("Exiting app due to popup confirmation.");
                         System.exit(0);
                         return;
                     }
                 }
-                if (panelInfo.isVisible())
-                    lastAnchorPane = panelInfo;
-                else if (panelUser.isVisible())
-                    lastAnchorPane = panelUser;
-                else if (panelSettings.isVisible())
-                    lastAnchorPane = panelSettings;
+                if (panelInfo.isVisible()) lastAnchorPane = panelInfo;
+                else if (panelUser.isVisible()) lastAnchorPane = panelUser;
+                else if (panelSettings.isVisible()) lastAnchorPane = panelSettings;
                 panelInfo.setVisible(false);
                 panelSettings.setVisible(false);
                 panelUser.setVisible(false);
@@ -612,86 +548,38 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void selectSource() throws IOException {
         final String rawSource = sources.getValue();
-        switch (rawSource) {
-            case "SELF" -> {
-                ChatDataHandler.getInstance().getProperties().setSelfEnabled();
-                ChatDataHandler.getInstance().getProperties().setPartyDisabled();
-                ChatDataHandler.getInstance().getProperties().setTeamDisabled();
-                ChatDataHandler.getInstance().getProperties().setAllDisabled();
-                logger.info("Toggled Self Narration ON");
-            }
-            case "PARTY" -> {
-                ChatDataHandler.getInstance().getProperties().setSelfDisabled();
-                ChatDataHandler.getInstance().getProperties().setPartyEnabled();
-                ChatDataHandler.getInstance().getProperties().setTeamDisabled();
-                ChatDataHandler.getInstance().getProperties().setAllDisabled();
-                logger.info("Toggled Party Narration ON");
-            }
-            case "TEAM" -> {
-                ChatDataHandler.getInstance().getProperties().setSelfDisabled();
-                ChatDataHandler.getInstance().getProperties().setPartyDisabled();
-                ChatDataHandler.getInstance().getProperties().setTeamEnabled();
-                ChatDataHandler.getInstance().getProperties().setAllDisabled();
-                logger.info("Toggled Team Narration ON");
-            }
-            case "SELF+PARTY" -> {
-                ChatDataHandler.getInstance().getProperties().setSelfEnabled();
-                ChatDataHandler.getInstance().getProperties().setPartyEnabled();
-                ChatDataHandler.getInstance().getProperties().setTeamDisabled();
-                ChatDataHandler.getInstance().getProperties().setAllDisabled();
-                logger.info("Toggled Self and Party Narration ON");
-            }
-            case "SELF+TEAM" -> {
-                ChatDataHandler.getInstance().getProperties().setSelfEnabled();
-                ChatDataHandler.getInstance().getProperties().setTeamEnabled();
-                ChatDataHandler.getInstance().getProperties().setPartyDisabled();
-                ChatDataHandler.getInstance().getProperties().setAllDisabled();
-                logger.info("Toggled Self and Team Narration ON");
-            }
-            case "PARTY+TEAM" -> {
-                ChatDataHandler.getInstance().getProperties().setPartyEnabled();
-                ChatDataHandler.getInstance().getProperties().setTeamEnabled();
-                ChatDataHandler.getInstance().getProperties().setAllDisabled();
-                ChatDataHandler.getInstance().getProperties().setSelfEnabled();
-                logger.info("Toggled Party and Team Narration ON");
-            }
-            case "PARTY+TEAM+ALL" -> {
-                ChatDataHandler.getInstance().getProperties().setPartyEnabled();
-                ChatDataHandler.getInstance().getProperties().setTeamEnabled();
-                ChatDataHandler.getInstance().getProperties().setAllEnabled();
-                ChatDataHandler.getInstance().getProperties().setSelfDisabled();
-                logger.info("Toggled Party, Team and All Narration ON");
-            }
-            case "SELF+PARTY+TEAM" -> {
-                ChatDataHandler.getInstance().getProperties().setPartyEnabled();
-                ChatDataHandler.getInstance().getProperties().setTeamEnabled();
-                ChatDataHandler.getInstance().getProperties().setAllDisabled();
-                ChatDataHandler.getInstance().getProperties().setSelfEnabled();
-                logger.info("Toggled Self, Party and Team Narration ON");
-            }
-            case "SELF+PARTY+ALL" -> {
-                ChatDataHandler.getInstance().getProperties().setPartyEnabled();
-                ChatDataHandler.getInstance().getProperties().setTeamDisabled();
-                ChatDataHandler.getInstance().getProperties().setAllEnabled();
-                ChatDataHandler.getInstance().getProperties().setSelfEnabled();
-                logger.info("Toggled Self, Party and Team Narration ON");
-            }
-            case "SELF+PARTY+TEAM+ALL" -> {
-                ChatDataHandler.getInstance().getProperties().setPartyEnabled();
-                ChatDataHandler.getInstance().getProperties().setTeamEnabled();
-                ChatDataHandler.getInstance().getProperties().setAllEnabled();
-                ChatDataHandler.getInstance().getProperties().setSelfEnabled();
-                logger.info("Toggled Self, Party, Team and All Narration ON");
-            }
-        }
-        VoiceGenerator.getInstance().loadCurrentSource(rawSource);
+        EnumSet<Source> sources = Source.fromString(rawSource);
+
+        Chat props = ChatDataHandler.getInstance().getProperties();
+        final boolean self = sources.contains(Source.SELF);
+        if (self) logger.info("Self narration enabled.");
+        else logger.info("Self narration disabled.");
+        props.setSelf(self);
+
+        final boolean party = sources.contains(Source.PARTY);
+        if (party) logger.info("Party narration enabled.");
+        else logger.info("Party narration disabled.");
+        props.setParty(party);
+
+        final boolean team = sources.contains(Source.TEAM);
+        if (team) logger.info("Team narration enabled.");
+        else logger.info("Team narration disabled.");
+        props.setTeam(team);
+
+        final boolean all = sources.contains(Source.ALL);
+        if (all) logger.info("All narration enabled.");
+        else logger.info("All narration disabled.");
+        props.setAll(all);
+
+        logger.info("Selected sources: " + Source.toString(sources));
+
+        VoiceGenerator.getInstance().loadCurrentSource(Source.toString(sources));
         VoiceGenerator.getInstance().saveConfig();
     }
 
     public void selectVoice() {
         final String rawVoiceId = voices.getValue();
-        if (VoiceGenerator.setCurrentVoice(rawVoiceId))
-            previousSelection = rawVoiceId;
+        if (VoiceGenerator.setCurrentVoice(rawVoiceId)) previousSelection = rawVoiceId;
     }
 
     public void toggleTeamChat() throws IOException {
@@ -714,8 +602,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void toggleMic() {
         if (micButton.isSelected()) {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe",
-                    System.getenv("ProgramFiles").replace("\\", "/"));
+            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
             try {
                 String command = fileLocation + " /SetPlaybackThroughDevice \"DefaultCaptureDevice\" \"CABLE Input\"";
                 Runtime.getRuntime().exec(command);
@@ -727,8 +614,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
         } else {
             try {
-                String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe",
-                        System.getenv("ProgramFiles").replace("\\", "/"));
+                String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
                 String command = fileLocation + " /SetPlaybackThroughDevice \"DefaultCaptureDevice\" \"CABLE Input\"";
                 Runtime.getRuntime().exec(command);
                 command = fileLocation + " /SetListenToThisDevice \"DefaultCaptureDevice\" 0";
@@ -761,11 +647,9 @@ public class ValNarratorController implements XMPPEventDispatcher {
     @Override
     public void dispatchEvent(XMPPEvent event) {
         if (event.data().contains("<?xml version='1.0'?>")) {
-            Platform.runLater(
-                    () -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Riot client opened."));
+            Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Riot client opened."));
         } else if (event.data().contains("_xmpp_session1")) {
-            Platform.runLater(
-                    () -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Valorant opened."));
+            Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Valorant opened."));
             isLoading = false;
             btnPower.setOpacity(1);
             btnInfo.setOpacity(1);
