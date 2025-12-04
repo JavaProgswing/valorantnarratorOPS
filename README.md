@@ -12,11 +12,9 @@ Avoid toxicity, never miss callouts, and upgrade your communication without impa
 ## 🌐 Website  
 https://valnarrator.vercel.app  
 
-🎥 **Demo Video:** https://www.youtube.com/watch?v=-pZSmC4mX3I
-
 ---
 
-## 📸 Preview  
+## 📸 Reddit discussion  
 ![Preview](https://github.com/user-attachments/assets/6b8f9c86-8b59-4917-9f98-97eb924456c9)
 
 ---
@@ -59,7 +57,7 @@ Your comms, your rules.
 ---
 
 # 📥 Download  
-👉 https://valnarrator.vercel.app
+👉 https://valnarrator.vercel.app/download
 
 ---
 
@@ -90,17 +88,7 @@ Support development & unlock:
 
 ---
 
-# 🧩 Tech Stack  
-- Electron  
-- Python Backend  
-- AWS Polly / Windows TTS  
-- Custom DSP Processing  
-
----
-
 # 🗺️ Roadmap  
-- Cross-game support  
-- Offline voice packs  
 - Advanced soundboard mode  
 - Plugin system  
 
@@ -109,25 +97,5 @@ Support development & unlock:
 # 📜 Legal  
 Not affiliated with Riot Games.  
 © 2025 Valorant Narrator.
-
----
-
-# Valorant Narrator App (Legacy Description)
-
-Introducing our innovative app that transforms Valorant game chat messages into real-time party and team voice communication.  
-With customizable voices — including authentic in-game agent voices — you'll experience a new immersive way to play Valorant.
-
-## Features
-- Real-time voice generation  
-- Authentic agent voices  
-- Enhanced communication  
-- Seamless in-game integration  
-
-## Pricing
-- **Free** → 300 messages/day  
-- **Premium** → Unlimited messages for **$2/month**  
-
-## Demo  
-YouTube demo: https://www.youtube.com/watch?v=-pZSmC4mX3I
 
 Explore archived releases: https://github.com/JavaProgswing/ValorantNarratorRELEASE
