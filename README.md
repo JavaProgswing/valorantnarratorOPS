@@ -1,25 +1,93 @@
-# Valorant Narrator App - Open Sourced
-![image](https://github.com/user-attachments/assets/6b8f9c86-8b59-4917-9f98-97eb924456c9)
 
-Introducing our innovative app that transforms Valorant game chat messages into real-time party and team voice communication, offering a unique gaming experience like never before. With customizable voices, including the authentic in-game agent voices from Valorant, our app adds an immersive layer to your gameplay. Imagine your favorite agent communicating your strategy or witty remarks directly through your mic.
+# 🎙️ Valorant Narrator
 
-App site: https://valnarrator.vercel.app
+Transform Valorant text chat into **real-time voice comms** using agent voices, Windows TTS, AWS Polly, and more.  
+Avoid toxicity, never miss callouts, and upgrade your communication without impacting FPS.
 
-Discord: https://discord.gg/RWP25YQDcf
+> **Note:** Releases older than **v4.0.3** are available in the archived repo:  
+> 👉 https://github.com/JavaProgswing/ValorantNarratorRELEASE
 
-## Features
-- Real-time conversion of game chat messages into voice.
-- Customizable voices, including Valorant in-game agent voices.
-- Enhanced gaming experience and communication.
-- Seamlessly integrates with Valorant gameplay.
+---
 
-## Pricing
-- **Free Usage**: Enjoy up to 300 messages per day for free.
-- **Premium**: Unlock unlimited messages and access to all features for just $2 per month.
+## 🌐 Website  
+https://valnarrator.vercel.app  
 
-## Demo
-Check out our demo on [YouTube](https://www.youtube.com/watch?v=Z_Dw7sJKL0A) to see it in action and level up your Valorant gameplay!
+---
 
-[![Watch the demo](https://img.youtube.com/vi/-pZSmC4mX3I/0.jpg)](https://www.youtube.com/watch?v=-pZSmC4mX3I)
+## 📸 Reddit discussion  
+![Preview](https://github.com/user-attachments/assets/6b8f9c86-8b59-4917-9f98-97eb924456c9)
 
-Feel free to explore our [app releases](https://github.com/JavaProgswing/ValorantNarratorRELEASE) to get started with the app.
+---
+
+# 🚀 Features
+
+### ⚡ Real-Time, Zero Lag  
+Runs in the background with **no FPS drop** — even on low-end systems.
+
+### 🎙️ Agent Voices  
+Use **12+ Valorant-inspired voices**, plus:
+- Windows Built-In Voices  
+- AWS Polly  
+- Premium Neural Voices  
+
+Free tier includes unlimited Windows voices.
+
+### 🎛️ Fully Customizable  
+- Voice speed & pitch  
+- Trigger words  
+- Toxic message filters  
+- Team/All chat selection  
+- Per-agent voice selection  
+
+Your comms, your rules.
+
+---
+
+# ❤️ Community Feedback
+
+> “A community treasure. If this works, it will be a godsend for teammates who type instead of speaking.”  
+> — Reddit User  
+
+> “Adds another layer to communication. Extremely useful.”  
+> — Reddit User  
+
+> “As a girl, this will save me so much sanity. I’ll definitely use it.”  
+> — Reddit User  
+
+---
+
+# 📥 Download  
+👉 https://valnarrator.vercel.app/download
+
+---
+
+# ⭐ Premium Version
+
+Support development & unlock:
+- Unlimited AWS Polly voices  
+- Premium neural voice models  
+- Offline narration  
+- Faster processing  
+- Exclusive updates  
+
+**Offered as a One-Time Purchase or Subscription.**
+
+---
+
+# 🤝 Join the Community  
+- 💬 Discord: https://valnarrator.vercel.app
+
+---
+
+# 🛠️ Installation  
+1. Download the installer  
+2. Open Valorant Narrator  
+3. Select your preferred voice  
+4. Launch a Valorant match  
+5. Text chat → Voice in real-time  
+
+---
+
+# 📜 Legal  
+Not affiliated with Riot Games.  
+© 2025 Valorant Narrator.
