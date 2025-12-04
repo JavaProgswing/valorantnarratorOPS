@@ -88,14 +88,6 @@ Support development & unlock:
 
 ---
 
-# 🗺️ Roadmap  
-- Advanced soundboard mode  
-- Plugin system  
-
----
-
 # 📜 Legal  
 Not affiliated with Riot Games.  
 © 2025 Valorant Narrator.
-
-Explore archived releases: https://github.com/JavaProgswing/ValorantNarratorRELEASE
