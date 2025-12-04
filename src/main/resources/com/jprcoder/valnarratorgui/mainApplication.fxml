@@ -228,10 +228,13 @@
                     <String fx:value="SELF"/>
                     <String fx:value="TEAM"/>
                     <String fx:value="TEAM+ALL"/>
+                    <String fx:value="SELF+TEAM+ALL"/>
                     <String fx:value="PARTY"/>
                     <String fx:value="PARTY+ALL"/>
+                    <String fx:value="SELF+PARTY+ALL"/>
                     <String fx:value="PARTY+TEAM"/>
                     <String fx:value="PARTY+TEAM+ALL"/>
+                    <String fx:value="SELF+PARTY+TEAM+ALL"/>
                 </FXCollections>
             </items>
         </ComboBox>

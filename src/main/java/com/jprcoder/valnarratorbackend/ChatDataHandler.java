@@ -87,23 +87,20 @@ public class ChatDataHandler {
             return;
         }
 
-        final boolean sourcesDisabled = !properties.isPartyState() && !properties.isTeamState() && !properties.isAllState();
-        if (sourcesDisabled && message.isOwnMessage() && properties.isSelfState()) {
-            logger.info("Self messages enabled, processing message!");
-        } else {
-            if (message.isOwnMessage() && !properties.isSelfState()) {
-                logger.info("Self messages disabled, ignoring message!");
-                return;
-            } else if (message.getMessageType() == MessageType.PARTY && !properties.isPartyState()) {
-                logger.info("Party messages disabled, ignoring message!");
-                return;
-            } else if (message.getMessageType() == MessageType.TEAM && !properties.isTeamState()) {
-                logger.info("Team messages disabled, ignoring message!");
-                return;
-            } else if (message.getMessageType() == MessageType.ALL && !properties.isAllState()) {
-                logger.info("All messages disabled, ignoring message!");
-                return;
-            }
+        if (message.getMessageType() == MessageType.PARTY && !properties.isPartyState()) {
+            logger.info("Party messages disabled, ignoring message!");
+            return;
+        } else if (message.getMessageType() == MessageType.TEAM && !properties.isTeamState()) {
+            logger.info("Team messages disabled, ignoring message!");
+            return;
+        } else if (message.getMessageType() == MessageType.ALL && !properties.isAllState()) {
+            logger.info("All messages disabled, ignoring message!");
+            return;
+        }
+
+        if (message.getMessageType() == MessageType.ALL && message.isOwnMessage() && !properties.isSelfState()) {
+            logger.info("(ALL)Self messages disabled, ignoring message!");
+            return;
         }
         final String finalBody = message.getContent().replace("/", "").replace("\\", "");
         CompletableFuture.runAsync(() -> {
