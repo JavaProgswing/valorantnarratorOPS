@@ -86,21 +86,24 @@ public class ChatDataHandler {
             logger.info("Private messages disabled, ignoring message!");
             return;
         }
-
-        if (message.getMessageType() == MessageType.PARTY && !properties.isPartyState()) {
+        if (message.isOwnMessage() && properties.isSelfState()) {
+            // Self messages enabled, skipping filtering checks.
+        } else if (message.getMessageType() == MessageType.PARTY && !properties.isPartyState()) {
             logger.info("Party messages disabled, ignoring message!");
             return;
         } else if (message.getMessageType() == MessageType.TEAM && !properties.isTeamState()) {
             logger.info("Team messages disabled, ignoring message!");
             return;
-        } else if (message.getMessageType() == MessageType.ALL && !properties.isAllState()) {
-            logger.info("All messages disabled, ignoring message!");
-            return;
         }
 
-        if (message.getMessageType() == MessageType.ALL && message.isOwnMessage() && !properties.isSelfState()) {
-            logger.info("(ALL)Self messages disabled, ignoring message!");
-            return;
+        if (message.getMessageType() == MessageType.ALL) {
+            if (!properties.isAllState()) {
+                logger.info("All messages disabled, ignoring message!");
+                return;
+            } else if (message.isOwnMessage() && !properties.isSelfState()) {
+                logger.info("(ALL)Self messages disabled, ignoring message!");
+                return;
+            }
         }
         final String finalBody = message.getContent().replace("/", "").replace("\\", "");
         CompletableFuture.runAsync(() -> {
