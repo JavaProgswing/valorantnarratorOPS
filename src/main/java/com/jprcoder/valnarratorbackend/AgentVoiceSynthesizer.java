@@ -18,9 +18,7 @@ public class AgentVoiceSynthesizer {
     private static final Logger logger = LoggerFactory.getLogger(AgentVoiceSynthesizer.class);
 
     // Matches tqdm bars, [INFO] logs, or numbered logs like [1/3]
-    private static final Pattern PROGRESS_PATTERN = Pattern.compile(
-            "^(\\s*\\d+%\\|.*?(ETA|<).*|\\[INFO].*|\\[\\d+/\\d+].*)"
-    );
+    private static final Pattern PROGRESS_PATTERN = Pattern.compile("^(\\s*\\d+%\\|.*?(ETA|<).*|\\[INFO].*|\\[\\d+/\\d+].*)");
 
     public volatile String downloadProgress = "";
     private Process voiceServerProcess = null;
@@ -49,6 +47,60 @@ public class AgentVoiceSynthesizer {
 
     // ----------------- VERSION & UPDATE CHECK -----------------
 
+    public static boolean compareVersions(String localVersion, String remoteVersion) {
+        if (localVersion == null) return true;
+
+        logger.debug("Comparing versions - Local: {}, Remote: {}", localVersion, remoteVersion);
+        try {
+            return Float.parseFloat(remoteVersion) > Float.parseFloat(localVersion);
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
+    public static String getFileVersion(String exePath) {
+        try {
+            Process p = new ProcessBuilder("powershell", "(Get-Item '" + exePath + "').VersionInfo.FileVersion").start();
+
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String version = br.readLine();
+                if (version != null) {
+                    version = version.trim();
+                    int firstDotIndex = version.indexOf('.') != -1 ? version.indexOf('.') + 1 : version.length();
+                    int secondDotIndex = version.indexOf('.', firstDotIndex) != -1 ? version.indexOf('.', firstDotIndex) : version.length();
+                    return version.substring(0, secondDotIndex);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static boolean isNewerVersionAvailable() {
+        String exePath = System.getenv("LOCALAPPDATA").replace("\\", "/") + "/ValorantNarrator/valorantNarrator-agentVoices.exe";
+
+        String localVersion = getFileVersion(exePath);
+        if (localVersion == null) return true;
+
+        VersionInfo remote;
+        try {
+            remote = APIHandler.fetchVersionInfo();
+        } catch (InterruptedException e) {
+            logger.error("Failed to fetch version info: ", e);
+            return false;
+        }
+
+        return compareVersions(localVersion, String.valueOf(remote.agent_version()));
+    }
+
+    public static void checkForUpdates(ProgressCallback callback) throws IOException, InterruptedException {
+        logger.info("Checking for updates...");
+        if (isNewerVersionAvailable()) {
+            downloadAgentVoice(callback);
+        }
+    }
+
     public void initialize() {
         if (voiceServerProcess != null) {
             logger.warn("Voice server process is already running.");
@@ -56,8 +108,7 @@ public class AgentVoiceSynthesizer {
         }
 
         try {
-            String exePath = System.getenv("LOCALAPPDATA").replace("\\", "/")
-                    + "/ValorantNarrator/valorantNarrator-agentVoices.exe";
+            String exePath = System.getenv("LOCALAPPDATA").replace("\\", "/") + "/ValorantNarrator/valorantNarrator-agentVoices.exe";
 
             ProcessBuilder builder = new ProcessBuilder(exePath);
             builder.redirectErrorStream(true);
@@ -65,9 +116,7 @@ public class AgentVoiceSynthesizer {
 
             ExecutorService executor = Executors.newSingleThreadExecutor();
             executor.submit(() -> {
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(voiceServerProcess.getInputStream(), StandardCharsets.UTF_8)
-                )) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(voiceServerProcess.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         line = line.trim();
@@ -89,59 +138,6 @@ public class AgentVoiceSynthesizer {
         } catch (IOException e) {
             logger.error("Failed to start valorantNarrator-agentVoices.exe: ", e);
             hasError = true;
-        }
-    }
-    public static boolean compareVersions(String localVersion, String remoteVersion) {
-        if (localVersion == null) return true;
-
-        logger.debug("Comparing versions - Local: {}, Remote: {}", localVersion, remoteVersion);
-        try {
-            return Float.parseFloat(remoteVersion) > Float.parseFloat(localVersion);
-        } catch (NumberFormatException e) {
-            return true;
-        }
-    }
-
-    public static String getFileVersion(String exePath) {
-        try {
-            Process p = new ProcessBuilder(
-                    "powershell",
-                    "(Get-Item '" + exePath + "').VersionInfo.FileVersion"
-            ).start();
-
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                String version = br.readLine();
-                if (version != null) return version.trim();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public static boolean isNewerVersionAvailable() {
-        String exePath = System.getenv("LOCALAPPDATA").replace("\\", "/")
-                + "/ValorantNarrator/valorantNarrator-agentVoices.exe";
-
-        String localVersion = getFileVersion(exePath);
-        if (localVersion == null) return true;
-
-        VersionInfo remote;
-        try {
-            remote = APIHandler.fetchVersionInfo();
-        } catch (InterruptedException e) {
-            logger.error("Failed to fetch version info: ", e);
-            return false;
-        }
-
-        return compareVersions(localVersion, String.valueOf(remote.agent_version()));
-    }
-
-    public static void checkForUpdates(ProgressCallback callback)
-            throws IOException, InterruptedException {
-        logger.info("Checking for updates...");
-        if (isNewerVersionAvailable()) {
-            downloadAgentVoice(callback);
         }
     }
 
