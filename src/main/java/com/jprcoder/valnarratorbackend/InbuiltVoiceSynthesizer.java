@@ -20,7 +20,7 @@ public class InbuiltVoiceSynthesizer {
             powershellWriter = new PrintWriter(new OutputStreamWriter(powershellProcess.getOutputStream()), true);
             powershellReader = new BufferedReader(new InputStreamReader(powershellProcess.getInputStream()));
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to start PowerShell for inbuilt voices: {}", e.getMessage());
         }
 
         try {
@@ -37,7 +37,7 @@ public class InbuiltVoiceSynthesizer {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn("Failed to enumerate inbuilt voices: {}", e.getMessage());
         }
         if (voices.isEmpty()) {
             logger.warn("No inbuilt voices found.");
@@ -46,15 +46,8 @@ public class InbuiltVoiceSynthesizer {
             speakInbuiltVoice(voices.get(0), "Inbuilt voice synthesizer initialized.", (short) 100);
         }
 
-        try {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            long pid = powershellProcess.pid();
-            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
-            Runtime.getRuntime().exec(command);
-        } catch (IOException e) {
-            logger.error("SoundVolumeView.exe generated an error: {}", e);
-            e.printStackTrace();
-        }
+        String soundVolumeView = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
+        ProcessUtil.runDetached(soundVolumeView, "/SetAppDefault", "CABLE Input", "all", String.valueOf(powershellProcess.pid()));
     }
 
     public List<String> getAvailableVoices() {
@@ -68,7 +61,7 @@ public class InbuiltVoiceSynthesizer {
             String command = String.format("Add-Type -AssemblyName System.Speech;$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;$speak.SelectVoice('%s');$speak.Rate=%d;$speak.Speak('%s');", voice, rate, text);
             powershellWriter.println(command);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn("Failed to speak inbuilt voice: {}", e.getMessage());
         }
     }
 }

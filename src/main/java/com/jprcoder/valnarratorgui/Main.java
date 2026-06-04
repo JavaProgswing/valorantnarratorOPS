@@ -3,7 +3,7 @@ package com.jprcoder.valnarratorgui;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
-import ch.qos.logback.core.util.StatusPrinter;
+import ch.qos.logback.core.util.StatusPrinter2;
 import com.google.gson.JsonSyntaxException;
 import com.jprcoder.valnarratorbackend.*;
 import com.jprcoder.valnarratorencryption.Encryption;
@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.nio.channels.FileLock;
@@ -45,6 +44,7 @@ public class Main {
     public static double currentVersion;
     private static Properties properties;
     private static char[] secretKey, secretSalt;
+    private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
     static {
         try {
@@ -70,7 +70,7 @@ public class Main {
         try {
             Encryption.encrypt(signature, Paths.get(CONFIG_DIR, "secretSign.bin").toString());
         } catch (IOException e) {
-            ValNarratorApplication.showDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.fromInt(JOptionPane.ERROR_MESSAGE));
+            ValNarratorApplication.showDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.ERROR_MESSAGE);
             System.exit(-1);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
@@ -79,7 +79,7 @@ public class Main {
         try {
             Encryption.encrypt(salt, Paths.get(CONFIG_DIR, "secretSalt.bin").toString());
         } catch (IOException e) {
-            ValNarratorApplication.showDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Not Registered", "Could not initialize app properly, try again with administrator!", MessageType.WARNING_MESSAGE);
             System.exit(-1);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException |
                  IllegalBlockSizeException | BadPaddingException e) {
@@ -96,7 +96,7 @@ public class Main {
             FileLock lock = randomAccessFile.getChannel().tryLock();
             if (lock == null) {
                 randomAccessFile.close();
-                ValNarratorApplication.showDialog("App", "Another instance of this application is already running!", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                ValNarratorApplication.showDialog("App", "Another instance of this application is already running!", MessageType.WARNING_MESSAGE);
                 System.exit(0);
             }
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -105,11 +105,11 @@ public class Main {
                     randomAccessFile.close();
                     Files.delete(Paths.get(Main.LOCK_FILE));
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.warn("Failed to release lock file on shutdown: {}", e.getMessage());
                 }
             }));
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to acquire single-instance lock: {}", e.getMessage());
         }
         return true;
     }
@@ -127,10 +127,8 @@ public class Main {
             configurator.setContext(loggerContext);
             configurator.doConfigure(Objects.requireNonNull(Main.class.getClassLoader().getResource(logbackConfigFile)));
         } catch (JoranException e) {
-            e.printStackTrace();
-            StatusPrinter.print(loggerContext);
+            new StatusPrinter2().print(loggerContext);
         }
-        Logger logger = LoggerFactory.getLogger(Main.class);
         try (InputStream inputStream = Objects.requireNonNull(Main.class.getResource("config.properties")).openStream()) {
             properties = new Properties();
             properties.load(inputStream);
@@ -176,7 +174,7 @@ public class Main {
                     System.exit(0);
                 }));
             } else {
-                ValNarratorApplication.showDialog("Installation", String.format("ValorantNarrator v-%1$,.2f has been downloaded, restart the system to finish installation!", currentVersion), MessageType.fromInt(JOptionPane.INFORMATION_MESSAGE));
+                ValNarratorApplication.showDialog("Installation", String.format("ValorantNarrator v-%1$,.2f has been downloaded, restart the system to finish installation!", currentVersion), MessageType.INFORMATION_MESSAGE);
                 try {
                     Thread.sleep(5000);
                 } catch (InterruptedException ignored) {
@@ -198,7 +196,7 @@ public class Main {
                         vi = fetchVersionInfo();
                         if (vi.version() > currentVersion) {
                             logger.info(String.format("New Update v%f found, updating!", vi.version()));
-                            ValNarratorApplication.showDialog("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.", MessageType.fromInt(JOptionPane.INFORMATION_MESSAGE));
+                            ValNarratorApplication.showDialog("New Update v" + vi.version(), "Changes:" + vi.changes() + "\nClick Ok to continue.", MessageType.INFORMATION_MESSAGE);
                             long start = System.currentTimeMillis();
                             Toolkit.getDefaultToolkit().beep();
                             downloadLatestVersion();
@@ -212,7 +210,7 @@ public class Main {
                     try {
                         Thread.sleep(5 * 60 * 1000);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        Thread.currentThread().interrupt();
                     }
                 } else {
                     Thread.sleep(30 * 1000);
@@ -230,7 +228,7 @@ public class Main {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", MessageType.WARNING_MESSAGE);
             throw new RuntimeException(e);
         }
         logger.info(String.format("New registration: %b, Serial id: %s", ri.registered(), serialNumber));
@@ -239,7 +237,7 @@ public class Main {
             secretKey = ri.signature().toCharArray();
             secretSalt = ri.salt().toCharArray();
 
-            if (ValNarratorApplication.showConfirmationAlertAndWait("Support Your Friend!", "If someone referred you to ValNarrator, enter their User ID.\n" + "They’ll receive rewards, and you will unlock a bonus.")) {
+            if (ValNarratorApplication.showConfirmationAlertAndWait("Support Your Friend!", "If someone referred you to ValNarrator, enter their User ID.\n" + "They'll receive rewards, and you will unlock a bonus.")) {
                 String referrerId = ValNarratorApplication.showInputDialogAndWait("Referral", "Enter the referrer's User ID:");
 
                 if (referrerId == null || referrerId.trim().isEmpty()) {
@@ -307,16 +305,16 @@ public class Main {
             if (notif.notifications != null && !notif.notifications.isEmpty()) {
 
                 StringBuilder builder = new StringBuilder();
-                builder.append("🎉 You’ve received new referral bonuses!\n\n");
+                builder.append("You've received new referral bonuses!\n\n");
 
                 for (ReferralNotification rn : notif.notifications) {
                     long hours = rn.bonus_duration / 3600;
                     long minutes = (rn.bonus_duration % 3600) / 60;
 
-                    builder.append(String.format("• %s used your referral → +%02d:%02d premium\n", rn.referred_user_id, hours, minutes));
+                    builder.append(String.format("- %s used your referral -> +%02d:%02d premium\n", rn.referred_user_id, hours, minutes));
                 }
 
-                builder.append("\nThank you for sharing ValNarrator! 🚀");
+                builder.append("\nThank you for sharing ValNarrator!");
 
                 ValNarratorApplication.showDialog("Referral Rewards", builder.toString(), MessageType.INFORMATION_MESSAGE);
             }

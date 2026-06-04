@@ -8,13 +8,33 @@ import java.nio.file.Paths;
 
 public class LockFileHandler {
 
-    private final String name, pid, protocol, password;
+    private static final Path LOCKFILE_PATH = Paths.get(
+            System.getenv("LocalAppData"), "Riot Games", "Riot Client", "Config", "lockfile");
 
-    private final int port;
+    private String name, pid, protocol, password;
+
+    private int port;
 
     public LockFileHandler() throws IOException {
-        Path path = Paths.get(System.getenv("LocalAppData"), "Riot Games", "Riot Client", "Config", "lockfile");
-        String lockData = Files.readString(path, StandardCharsets.UTF_8);
+        readLockfile();
+    }
+
+    /**
+     * Check whether the lockfile exists on disk (Riot Client is running).
+     */
+    public static boolean exists() {
+        return Files.exists(LOCKFILE_PATH);
+    }
+
+    /**
+     * Re-read the lockfile. Port and password rotate on every Riot Client restart.
+     */
+    public void refresh() throws IOException {
+        readLockfile();
+    }
+
+    private void readLockfile() throws IOException {
+        String lockData = Files.readString(LOCKFILE_PATH, StandardCharsets.UTF_8);
         String[] data = lockData.split(":");
         if (data.length < 5) throw new IOException("Invalid lockfile data!");
 

@@ -8,7 +8,7 @@ public class Chat {
     private final Hashtable<String, String> playerIDs = new Hashtable<>();
     private final Hashtable<String, String> playerNames = new Hashtable<>();
     private final ArrayList<String> ignoredPlayerIDs = new ArrayList<>();
-    private long messagesSent, charactersSent;
+    private long messagesSent, charactersSent, wordsSent;
     private boolean selfState = true, privateState, partyState, teamState, allState, isDisabled;
     private boolean isQuotaExhausted;
     private String selfID;
@@ -51,7 +51,10 @@ public class Chat {
 
     public void updateMessageStats(Message message) {
         messagesSent++;
-        charactersSent += message.getContent().length();
+        String content = message.getContent();
+        charactersSent += content.length();
+        String trimmed = content.trim();
+        if (!trimmed.isEmpty()) wordsSent += trimmed.split("\\s+").length;
     }
 
     public long getMessagesSent() {
@@ -60,6 +63,17 @@ public class Chat {
 
     public long getCharactersSent() {
         return charactersSent;
+    }
+
+    public long getWordsSent() {
+        return wordsSent;
+    }
+
+    /**
+     * Average characters per narrated message (0 when nothing has been narrated).
+     */
+    public long getAverageMessageLength() {
+        return messagesSent == 0 ? 0 : charactersSent / messagesSent;
     }
 
     public String getSelfID() {

@@ -1,55 +1,32 @@
 package com.jprcoder.valnarratorgui;
 
-import com.google.gson.*;
 import com.jfoenix.controls.JFXToggleButton;
 import com.jprcoder.valnarratorbackend.*;
+import javafx.animation.FadeTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Region;
+import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
 import static com.jprcoder.valnarratorbackend.RiotUtilityHandler.isValorantRunning;
 import static com.jprcoder.valnarratorgui.ValNarratorApplication.*;
 
-interface XMPPEventDispatcher {
-    void dispatchError(XMPPError error) throws InterruptedException, ExecutionException, IOException;
-
-    void dispatchEvent(XMPPEvent event);
-}
-
-record XMPPError(String reason, int code) {
-    public String toString() {
-        return String.format("(%d) %s", code, reason);
-    }
-}
-
-record XMPPEvent(String type, long time, String data) {
-    public String toString() {
-        return String.format("(%s) %s", type, data);
-    }
-}
-
-// TODO: Separate a new class named ValNarratorProperties for utility/property
-// methods.
-public class ValNarratorController implements XMPPEventDispatcher {
+public class ValNarratorController {
     private static final Logger logger = LoggerFactory.getLogger(ValNarratorController.class);
     private static ValNarratorController latestInstance;
     @FXML
@@ -79,6 +56,10 @@ public class ValNarratorController implements XMPPEventDispatcher {
     @FXML
     public Label charactersNarratedLabel;
     @FXML
+    public Label wordsSentLabel;
+    @FXML
+    public Label avgLengthLabel;
+    @FXML
     public Label windowTitle;
     @FXML
     public Label premiumWindowTitle;
@@ -93,45 +74,59 @@ public class ValNarratorController implements XMPPEventDispatcher {
     @FXML
     public ImageView btnPower, btnInfo, btnUser, btnSettings;
     @FXML
-    public AnchorPane panelLogin, panelUser, panelSettings, panelInfo, topBar;
+    public Node panelLogin, panelUser, panelSettings, panelInfo, topBar, disabledOverlay;
+    @FXML
+    public Region contentArea;
+    @FXML
+    public Label premiumBadge;
+    @FXML
+    public Label rateValueLabel;
     private String previousSelection = "Matthew, male";
-    private boolean isLoading = true;
-    private AnchorPane lastAnchorPane;
+    volatile boolean isLoading = true;
 
     private boolean isVoicesVisible = false;
 
     private boolean selectingKeybind = false;
 
     public ValNarratorController() {
-        latestInstance = this;
+        ValNarratorController.latestInstance = this;
     }
 
     public static ValNarratorController getLatestInstance() {
         return latestInstance;
     }
 
-    public boolean isLoading() {
-        return isLoading;
+    private static void fadeIn(Node node) {
+        FadeTransition fade = new FadeTransition(Duration.millis(160), node);
+        fade.setFromValue(0.0);
+        fade.setToValue(1.0);
+        fade.play();
+    }
+
+    private static void clipToBounds(Region region) {
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(region.widthProperty());
+        clip.heightProperty().bind(region.heightProperty());
+        region.setClip(clip);
     }
 
     public void initialize() {
         logger.info("Initializing app.");
-        lastAnchorPane = panelUser;
-        long start = System.currentTimeMillis(), appStart = System.currentTimeMillis();
-        try {
-            String command = "taskkill /F /IM valorantNarrator-xmpp.exe";
-            ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            int code = process.waitFor();
-            if (code == 0) {
-                logger.info("Forcefully closed XMPP!");
-            }
-        } catch (Exception e) {
-            logger.error("Killing XMPP generated an error: {}", e);
-            e.printStackTrace();
+        rateValueLabel.textProperty().bind(rateSlider.valueProperty().asString("%.0f%%"));
+        clipToBounds(contentArea); // keep panel content (e.g. the rate slider) inside the card
+
+        // Preview/design mode: render the UI without launching Valorant or touching
+        // the Riot client / audio devices. Enabled with -Dvalnarrator.preview=true.
+        if (Boolean.getBoolean("valnarrator.preview")) {
+            logger.info("Preview mode - skipping Riot client, audio and process startup.");
+            return;
         }
 
+        topBar.setDisable(true); // nav unusable until startup completes
+
+        long appStart = System.currentTimeMillis();
+
+        // Kill stale agent voice process (if any)
         try {
             String command = "taskkill /F /IM valorantNarrator-agentVoices.exe";
             ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
@@ -139,203 +134,44 @@ public class ValNarratorController implements XMPPEventDispatcher {
             Process process = processBuilder.start();
             int code = process.waitFor();
             if (code == 0) {
-                logger.info("Forcefully closed valorantNarrator-agentVoices!");
+                logger.debug("Closed stale agent-voice process.");
             }
         } catch (Exception e) {
-            logger.error("Killing valorantNarrator-agentVoices generated an error: {}", e);
-            e.printStackTrace();
+            logger.debug("Could not kill stale agent-voice process: {}", e.getMessage());
         }
 
-        try {
-            String command = "taskkill /F /IM RiotClientServices.exe";
-            ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            int code = process.waitFor();
-            if (code == 0) {
-                logger.info("Forcefully closed riot client!");
-            }
-        } catch (Exception e) {
-            logger.error("Killing Riot-Client generated an error: {}", e);
-            e.printStackTrace();
-        }
-
-        try {
-            String command = "taskkill /F /IM VALORANT-Win64-Shipping.exe";
-            ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            int code = process.waitFor();
-            if (code == 0) {
-                logger.info("Forcefully closed valorant!");
-            }
-        } catch (Exception e) {
-            logger.error("Killing Valorant generated an error: {}", e);
-            e.printStackTrace();
-        }
-
-        logger.info("Closed XMPP, riot-client, valorant in {} ms.", (System.currentTimeMillis() - start));
-        try {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            long pid = ProcessHandle.current().pid();
-            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug("({} ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start));
-            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug("({} ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start));
-            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug("({} ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start));
-        } catch (IOException e) {
-            logger.error("SoundVolumeView.exe generated an error: {}", e);
-            e.printStackTrace();
-        }
+        // Set up audio routing (VB-Audio CABLE)
+        String soundVolumeView = String.format("%s/ValorantNarrator/SoundVolumeView.exe",
+                System.getenv("ProgramFiles").replace("\\", "/"));
+        long pid = ProcessHandle.current().pid();
+        ProcessUtil.runDetached(soundVolumeView, "/SetAppDefault", "CABLE Input", "all", String.valueOf(pid));
+        ProcessUtil.runDetached(soundVolumeView, "/SetPlaybackThroughDevice", "CABLE Output",
+                "Default Playback Device");
+        ProcessUtil.runDetached(soundVolumeView, "/SetListenToThisDevice", "CABLE Output", "1");
         logger.info("Initialized app's sound output.");
-        logger.info("Initializing xmpp-node.");
-        try {
-            final String xmppPath = String.format("%s/ValorantNarrator/valorantNarrator-xmpp.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            ProcessBuilder processBuilder = new ProcessBuilder(xmppPath);
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            CompletableFuture.runAsync(() -> {
-                final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                String line;
-                final Gson gson = new Gson();
 
-                while (true) {
-                    try {
-                        if ((line = reader.readLine()) == null) break;
-                    } catch (IOException e) {
-                        logger.error("Reading Xmpp-Node's output generated an error: {}", e);
-                        throw new RuntimeException(e);
-                    }
+        // -- Riot Client local API connection (whisper chat) ----------------
+        logger.info("Connecting via Riot Client local API.");
 
-                    try {
-                        if (line.isEmpty()) continue;
+        // Builds its own trust-all client with TLS hostname verification disabled
+        // (required for the Riot local API's self-signed 127.0.0.1 certificate).
+        final RiotLocalApiClient localApi = new RiotLocalApiClient();
 
-                        JsonElement element = JsonParser.parseString(line);
-                        if (!element.isJsonObject() || element.isJsonNull()) {
-                            continue;
-                        }
-                        JsonObject json = gson.fromJson(line, JsonObject.class);
-                        if (json.get("type").getAsString().equals("error")) {
-                            ValNarratorController.getLatestInstance().dispatchError(new XMPPError(json.get("reason").getAsString(), json.get("code").getAsInt()));
-                        } else {
-                            if (json.get("type") == null || json.get("time") == null) {
-                                logger.warn("Received an invalid event: {}", line);
-                                continue;
-                            }
-                            final String jsonData = (json.get("data") == null) ? "" : json.get("data").getAsString();
-                            XMPPEvent event = new XMPPEvent(json.get("type").getAsString(), json.get("time").getAsLong(), jsonData);
-                            final String xml = event.data();
-                            if (event.type().equals("incoming")) {
-                                Pattern idPattern = Pattern.compile("id='(.*?)'");
-                                Matcher idMatcher = idPattern.matcher(xml.replace("\"", "'"));
-                                String id = idMatcher.find() ? idMatcher.group(1) : null;
-                                Pattern jidPattern = Pattern.compile("<jid>(.*?)</jid>");
-                                Matcher jidMatcher = jidPattern.matcher(xml);
-                                String jid = jidMatcher.find() ? jidMatcher.group(1).split("@")[0] : null;
-                                if (ChatDataHandler.getInstance().getProperties().getSelfID() == null && id != null && id.equals("_xmpp_bind1")) {
-                                    logger.debug("Set Self ID to {}", jid);
-                                    ChatDataHandler.getInstance().getProperties().setSelfID(jid);
-                                }
-                                ValNarratorController.getLatestInstance().dispatchEvent(event);
-                                if (!ValNarratorController.getLatestInstance().isLoading() && ChatDataHandler.getInstance().getProperties().isDisabled()) {
-                                    continue;
-                                }
+        // Readiness stage updates -> progress label.
+        localApi.setReadinessListener((stage, detail) -> Platform.runLater(() -> progressLoginLabel.setText(detail)));
 
-                                if (xml.startsWith("<message")) {
-                                    Message msg = new Message(xml);
-                                    logger.info("Received message: {}", msg);
-                                    ChatDataHandler.getInstance().message(msg);
-                                }
-                            } else {
-                                if (xml.startsWith("<message")) {
-                                    logger.debug("Sent: {}", xml);
-                                }
-                            }
+        // Messages are now processed exclusively via OcrChatClient
+        AppInitializer.start(this, localApi);
 
-                        }
-                    } catch (NullPointerException | InterruptedException | ExecutionException | IOException e) {
-                        logger.warn("Received an error while processing line: {}", line);
-                        e.printStackTrace();
-                    } catch (JsonSyntaxException ignored) {
-                        logger.debug("Received non-JSON line: {}", line);
-                    }
-                }
-            });
-        } catch (IOException e) {
-            logger.error("Running Xmpp-Node generated an error: ");
-            e.printStackTrace();
-        }
-        logger.info("Initialization completed in {} ms.", System.currentTimeMillis() - appStart);
-
-        CompletableFuture.runAsync(() -> {
-            final long startTime = System.currentTimeMillis();
-            boolean warningTriggered = false;
-            while (isLoading) {
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                if (System.currentTimeMillis() - startTime > 30_000 && !warningTriggered) {
-                    logger.warn("Loading is taking longer than expected...");
-                    Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Preparing to start valorant, this may take a while..."));
-                    warningTriggered = true;
-                }
-                if (ValNarratorController.getLatestInstance().progressLogin.getProgress() >= 1)
-                    Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLogin.setProgress(0));
-                Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLogin.setProgress(ValNarratorController.getLatestInstance().progressLogin.getProgress() + 0.025));
-            }
-            Platform.runLater(() -> {
-                ValNarratorController.getLatestInstance().progressLogin.setProgress(1);
-                ValNarratorController.getLatestInstance().panelInfo.setVisible(false);
-                ValNarratorController.getLatestInstance().panelSettings.setVisible(false);
-                ValNarratorController.getLatestInstance().panelLogin.setVisible(false);
-                ValNarratorController.getLatestInstance().panelUser.setVisible(true);
-            });
-            ChatDataHandler.generateSingleton();
-            new VoiceTokenHandler(ChatDataHandler.getInstance().getAPIHandler()).startRefreshToken();
-            VoiceGenerator.generateSingleton();
-            Platform.runLater(() -> {
-                ArrayList<String> inbuiltVoiceNames = new ArrayList<>();
-                VoiceGenerator.getInbuiltVoices().forEach((n) -> inbuiltVoiceNames.add(String.format("%s, INBUILT", n)));
-                ValNarratorController.getLatestInstance().voices.getItems().addAll(inbuiltVoiceNames);
-
-                // Populate player dropdown
-                ValNarratorController.getLatestInstance().playerDropdown.getItems().clear();
-                var properties = ChatDataHandler.getInstance().getProperties();
-                if (properties != null && properties.getPlayerNameTable() != null) {
-                    for (String playerName : properties.getPlayerNameTable().keySet()) {
-                        String playerID = properties.getPlayerNameTable().get(playerName);
-                        if (properties.isIgnoredPlayerID(playerID)) {
-                            ValNarratorController.getLatestInstance().playerDropdown.getItems().add(playerName + " (IGNORED)");
-                        } else {
-                            ValNarratorController.getLatestInstance().playerDropdown.getItems().add(playerName);
-                        }
-                    }
-                }
-            });
-            try {
-                if (VoiceGenerator.isSyncValorantSettingsEnabled())
-                    VoiceGenerator.getInstance().syncValorantPlayerSettings();
-            } catch (IOException | DataFormatException | InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        rateSlider.valueProperty().addListener((observable, oldValue, newValue) -> VoiceGenerator.setCurrentRate(newValue.shortValue()));
+        logger.info("Initialization dispatched in {} ms.", System.currentTimeMillis() - appStart);
+        rateSlider.valueProperty()
+                .addListener((observable, oldValue, newValue) -> VoiceGenerator.setCurrentRate(newValue.shortValue()));
     }
 
     public void openDiscordInvite() {
         try {
             java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://valnarrator.vercel.app/discord"));
-            logger.info("Opened discord invite link successfully!");
+            logger.debug("Opened discord invite link successfully!");
         } catch (IOException e) {
             logger.error("Could not open discord invite link!");
             showAlert("Error!", "Failed to open discord invite link, please try again later.");
@@ -344,15 +180,22 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void handlePlayerAction() {
         String player = playerDropdown.getValue();
-        if (player == null || player.trim().isEmpty()) return;
+        if (player == null || player.trim().isEmpty())
+            return;
 
         // Check if the player is already in the list (ignoring the suffix)
         String cleanPlayerName = player.replace(" (IGNORED)", "");
-        boolean isIgnored = ChatDataHandler.getInstance().getProperties().isIgnoredPlayerID(ChatDataHandler.getInstance().getProperties().getPlayerNameTable().get(cleanPlayerName));
+        Chat props = ChatDataHandler.getInstance().getProperties();
+        if (!props.getPlayerNameTable().containsKey(cleanPlayerName)) {
+            // Unknown name typed in the editable box - nothing to toggle.
+            Platform.runLater(() -> playerDropdown.getSelectionModel().clearSelection());
+            return;
+        }
+        boolean isIgnored = props.isIgnoredPlayerID(props.getPlayerNameTable().get(cleanPlayerName));
 
         if (isIgnored) {
             // Unignore
-            logger.info("Unignoring player {}", cleanPlayerName);
+            logger.debug("Unignoring player {}", cleanPlayerName);
             ChatDataHandler.getInstance().getProperties().removeIgnoredPlayer(cleanPlayerName);
 
             // Update dropdown item
@@ -364,7 +207,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
             });
         } else {
             // Ignore
-            logger.info("Ignoring player {}", cleanPlayerName);
+            logger.debug("Ignoring player {}", cleanPlayerName);
             ChatDataHandler.getInstance().getProperties().addIgnoredPlayer(cleanPlayerName);
 
             // Update dropdown item
@@ -379,24 +222,41 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void syncValorantSettingsToggle() throws IOException {
         if (VoiceGenerator.getInstance().syncValorantSettingsToggle()) {
-            Platform.runLater(() -> showInformation("Voice Settings SYNC", "Enabled, Valorant settings will be synced at next start-up!"));
+            Platform.runLater(() -> showInformation("Voice Settings SYNC",
+                    "Enabled, Valorant settings will be synced at next start-up!"));
         } else {
-            Platform.runLater(() -> showInformation("Voice Settings SYNC", "Disabled, Valorant settings will not be synced at next start-up!"));
+            Platform.runLater(() -> showInformation("Voice Settings SYNC",
+                    "Disabled, Valorant settings will not be synced at next start-up!"));
         }
     }
 
     public void syncValorantSettings() {
-        try {
-            VoiceGenerator.getInstance().syncValorantPlayerSettings();
-            showInformation("Voice Settings SYNC", "Valorant settings synced successfully!");
-        } catch (IOException | DataFormatException | InterruptedException e) {
-            logger.error("Failed to sync valorant settings!");
-            showAlert("Error!", "Failed to sync valorant settings, please try again later.");
-        }
+        // Heavy (file IO + network + process wait) - never run on the FX thread or the
+        // UI freezes.
+        CompletableFuture.runAsync(() -> {
+            try {
+                VoiceGenerator.getInstance().syncValorantPlayerSettings();
+                showInformation("Voice Settings SYNC", "Valorant settings synced successfully!");
+            } catch (IOException | DataFormatException | InterruptedException e) {
+                if (e instanceof InterruptedException)
+                    Thread.currentThread().interrupt();
+                logger.error("Failed to sync valorant settings: {}", e.getMessage());
+                showAlert("Error!", "Failed to sync valorant settings, please try again later.");
+            }
+        });
+    }
+
+    public void revertVoiceSelection() {
+        voices.getSelectionModel().select(previousSelection);
+    }
+
+    public void openFullFormsManager() {
+        FullFormsManager.show();
     }
 
     public void keybindChange(javafx.scene.input.KeyEvent event) throws IOException {
-        if (!selectingKeybind) return;
+        if (!selectingKeybind)
+            return;
 
         KeyCode keyCode = event.getCode();
         String keyText = keyCode.getName();
@@ -406,11 +266,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
         }
 
         VoiceGenerator.getInstance().setKeyEvent(keyCode.getCode());
-        Platform.runLater(() -> keybindText.setText("Pick a keybind for team mic, currently set to " + keyText));
-    }
-
-    public void revertVoiceSelection() {
-        voices.getSelectionModel().select(previousSelection);
+        Platform.runLater(() -> keybindText.setText("Team voice key: " + keyText));
     }
 
     public void markQuotaExhausted() {
@@ -419,7 +275,7 @@ public class ValNarratorController implements XMPPEventDispatcher {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
                 }
             }
             ChatDataHandler.getInstance().getProperties().markQuotaExhausted();
@@ -429,8 +285,10 @@ public class ValNarratorController implements XMPPEventDispatcher {
             ValNarratorController.getLatestInstance().quotaBar.setProgress(0.0);
             ValNarratorController.getLatestInstance().setPremiumDateLabel("N/A");
             try {
-                voices.getSelectionModel().select(String.format("%s, INBUILT", VoiceGenerator.getInbuiltVoices().get(0)));
-                ValNarratorApplication.showAlert("Quota Exhausted!", "An inbuilt voice has been automatically selected.");
+                voices.getSelectionModel()
+                        .select(String.format("%s, INBUILT", VoiceGenerator.getInbuiltVoices().get(0)));
+                ValNarratorApplication.showAlert("Quota Exhausted!",
+                        "An inbuilt voice has been automatically selected.");
             } catch (IndexOutOfBoundsException e) {
                 ValNarratorApplication.showAlert("Quota Exhausted!", "Please try again later at 00:00 UTC.");
             }
@@ -440,32 +298,24 @@ public class ValNarratorController implements XMPPEventDispatcher {
     public void updateRequestQuota(MessageQuota mq) {
         if (mq.remainingQuota() <= 0) {
             markQuotaExhausted();
+        } else if (mq.isPremium()) {
+            Platform.runLater(() -> {
+                windowTitle.setVisible(false);
+                premiumWindowTitle.setVisible(true);
+                quotaLabel.setText("Unlimited, Enjoy!");
+                setPremiumDateLabel(String.format("Valid till %s", new SimpleDateFormat("dd/MM/yyyy HH:mm")
+                        .format(new Date(Long.parseLong(mq.premiumTill()) * 1000))));
+                applyPlanStyle(true);
+            });
         } else {
-            if (mq.isPremium()) {
-                Platform.runLater(() -> {
-                    ValNarratorController.getLatestInstance().windowTitle.setVisible(false);
-                    ValNarratorController.getLatestInstance().premiumWindowTitle.setVisible(true);
-                    ValNarratorController.getLatestInstance().quotaLabel.setText("Unlimited, Enjoy!");
-                    ValNarratorController.getLatestInstance().setPremiumDateLabel(String.format("Valid till %s", new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(Long.parseLong(mq.premiumTill()) * 1000))));
-                });
-            } else {
-                Platform.runLater(() -> {
-                    ValNarratorController.getLatestInstance().quotaLabel.setText(mq.remainingQuota() + "/" + ChatDataHandler.getInstance().getProperties().getQuotaLimit());
-                    ValNarratorController.getLatestInstance().quotaBar.setProgress((double) mq.remainingQuota() / ChatDataHandler.getInstance().getProperties().getQuotaLimit());
-                    ValNarratorController.getLatestInstance().setPremiumDateLabel("N/A");
-                });
-            }
-        }
-    }
-
-    public void browseSubscription() throws IOException {
-        String subscriptionURL = ChatDataHandler.getInstance().getAPIHandler().getSubscriptionURL();
-        if (subscriptionURL != null) {
-            java.awt.Desktop.getDesktop().browse(java.net.URI.create(subscriptionURL));
-            logger.info("Opened subscription page successfully!");
-        } else {
-            logger.error("Could not open subscription page!");
-            showAlert("Error!", "Failed to open subscription page, please try again later.");
+            Platform.runLater(() -> {
+                quotaLabel.setText(
+                        mq.remainingQuota() + "/" + ChatDataHandler.getInstance().getProperties().getQuotaLimit());
+                quotaBar.setProgress(
+                        (double) mq.remainingQuota() / ChatDataHandler.getInstance().getProperties().getQuotaLimit());
+                setPremiumDateLabel("N/A");
+                applyPlanStyle(false);
+            });
         }
     }
 
@@ -475,6 +325,32 @@ public class ValNarratorController implements XMPPEventDispatcher {
 
     public void setCharactersNarrated(long number) {
         charactersNarratedLabel.setText(Long.toString(number));
+    }
+
+    /**
+     * Reflect premium vs free in the account badge + subscribe button.
+     */
+    private void applyPlanStyle(boolean premium) {
+        if (premiumBadge != null) {
+            premiumBadge.setText(premium ? "PREMIUM" : "FREE");
+            premiumBadge.getStyleClass().removeAll("premium-badge", "free-badge");
+            premiumBadge.getStyleClass().add(premium ? "premium-badge" : "free-badge");
+        }
+        if (subscribeButton != null) {
+            subscribeButton.setText(premium ? "Manage subscription" : "Upgrade to Premium");
+        }
+    }
+
+    public void browseSubscription() {
+        String subscriptionURL = ChatDataHandler.getInstance().getAPIHandler().getSubscriptionURL();
+        if (subscriptionURL == null) {
+            logger.error("Could not resolve the subscription URL.");
+            showAlert("Error!", "Failed to open the subscription page, please try again later.");
+            return;
+        }
+        String url = subscriptionURL + (subscriptionURL.contains("?") ? "&" : "?") + "user-id=" + Main.serialNumber;
+        SubscriptionView.show(url, Main.serialNumber, ChatDataHandler.getInstance().isPremium());
+        logger.debug("Opening subscription view for user {}.", Main.serialNumber);
     }
 
     public void setPremiumDateLabel(String date) {
@@ -501,161 +377,164 @@ public class ValNarratorController implements XMPPEventDispatcher {
         selectingKeybind = false;
     }
 
+    public void setWordsNarrated(long number) {
+        wordsSentLabel.setText(Long.toString(number));
+    }
+
+    public void setAverageLength(long number) {
+        avgLengthLabel.setText(Long.toString(number));
+    }
+
     public void handleButtonAction(MouseEvent event) {
         if (isLoading) {
             return;
         }
+        Chat props = ChatDataHandler.getInstance().getProperties();
+
         if (event.getTarget() == btnPower) {
-            if (ChatDataHandler.getInstance().getProperties().toggleState()) {
-                if (!isValorantRunning()) {
-                    if (showConfirmationAlertAndWait("Confirmation", "Valorant isn't running, do you want to close this app?")) {
-                        logger.info("Exiting app due to popup confirmation.");
-                        System.exit(0);
-                        return;
-                    }
-                }
-                if (panelInfo.isVisible()) lastAnchorPane = panelInfo;
-                else if (panelUser.isVisible()) lastAnchorPane = panelUser;
-                else if (panelSettings.isVisible()) lastAnchorPane = panelSettings;
-                panelInfo.setVisible(false);
-                panelSettings.setVisible(false);
-                panelUser.setVisible(false);
-                btnInfo.setOpacity(0.4);
-                btnUser.setOpacity(0.4);
-                btnSettings.setOpacity(0.4);
-            } else {
-                lastAnchorPane.setVisible(true);
-                btnInfo.setOpacity(1);
-                btnUser.setOpacity(1);
-                btnSettings.setOpacity(1);
+            boolean nowDisabled = props.toggleState();
+            if (nowDisabled && !isValorantRunning()
+                    && showConfirmationAlertAndWait("Close Valorant Narrator?",
+                    "Valorant isn't running. Do you want to close the app?")) {
+                logger.debug("Exiting app due to popup confirmation.");
+                System.exit(0);
+                return;
             }
+            setPaused(nowDisabled);
+            return;
         }
 
-        if (event.getTarget() == btnInfo && !ChatDataHandler.getInstance().getProperties().isDisabled()) {
-            panelInfo.setVisible(true);
-            panelSettings.setVisible(false);
-            panelUser.setVisible(false);
-        } else if (event.getTarget() == btnUser && !ChatDataHandler.getInstance().getProperties().isDisabled()) {
-            panelInfo.setVisible(false);
-            panelSettings.setVisible(false);
-            panelUser.setVisible(true);
-        } else if (event.getTarget() == btnSettings && !ChatDataHandler.getInstance().getProperties().isDisabled()) {
-            panelInfo.setVisible(false);
-            panelSettings.setVisible(true);
-            panelUser.setVisible(false);
+        if (props.isDisabled()) {
+            return; // ignore tab switches while narration is paused
         }
+        if (event.getTarget() == btnInfo) {
+            showOnly(panelInfo);
+            setActiveTab(btnInfo);
+        } else if (event.getTarget() == btnUser) {
+            showOnly(panelUser);
+            setActiveTab(btnUser);
+        } else if (event.getTarget() == btnSettings) {
+            showOnly(panelSettings);
+            setActiveTab(btnSettings);
+        }
+    }
+
+    /**
+     * Show exactly one content panel (with a quick fade-in) and remember it as
+     * active.
+     */
+    private void showOnly(Node panel) {
+        panelInfo.setVisible(panel == panelInfo);
+        panelUser.setVisible(panel == panelUser);
+        panelSettings.setVisible(panel == panelSettings);
+        fadeIn(panel);
+    }
+
+    /**
+     * Highlight the active tab icon; dim the others.
+     */
+    public void setActiveTab(ImageView active) {
+        for (ImageView icon : new ImageView[]{btnUser, btnInfo, btnSettings}) {
+            icon.setOpacity(icon == active ? 1.0 : 0.45);
+        }
+    }
+
+    /**
+     * Toggle the "narration paused" UI state (power button).
+     */
+    private void setPaused(boolean paused) {
+        if (disabledOverlay != null)
+            disabledOverlay.setVisible(paused);
+        btnInfo.setDisable(paused);
+        btnUser.setDisable(paused);
+        btnSettings.setDisable(paused);
+        if (paused) {
+            if (!btnPower.getStyleClass().contains("power-active"))
+                btnPower.getStyleClass().add("power-active");
+        } else {
+            btnPower.getStyleClass().remove("power-active");
+        }
+        logger.debug(paused ? "Narration paused." : "Narration resumed.");
     }
 
     public void selectSource() throws IOException {
         final String rawSource = sources.getValue();
-        EnumSet<Source> sources = Source.fromString(rawSource);
+        if (rawSource == null || rawSource.isBlank())
+            return;
+        EnumSet<Source> selectedSources = Source.fromString(rawSource);
 
         Chat props = ChatDataHandler.getInstance().getProperties();
-        final boolean self = sources.contains(Source.SELF);
-        if (self) logger.info("Self narration enabled.");
-        else logger.info("Self narration disabled.");
+        final boolean self = selectedSources.contains(Source.SELF);
+        if (self)
+            logger.debug("Self narration enabled.");
+        else
+            logger.debug("Self narration disabled.");
         props.setSelf(self);
 
-        final boolean party = sources.contains(Source.PARTY);
-        if (party) logger.info("Party narration enabled.");
-        else logger.info("Party narration disabled.");
+        final boolean party = selectedSources.contains(Source.PARTY);
+        if (party)
+            logger.debug("Party narration enabled.");
+        else
+            logger.debug("Party narration disabled.");
         props.setParty(party);
 
-        final boolean team = sources.contains(Source.TEAM);
-        if (team) logger.info("Team narration enabled.");
-        else logger.info("Team narration disabled.");
+        final boolean team = selectedSources.contains(Source.TEAM);
+        if (team)
+            logger.debug("Team narration enabled.");
+        else
+            logger.debug("Team narration disabled.");
         props.setTeam(team);
 
-        final boolean all = sources.contains(Source.ALL);
-        if (all) logger.info("All narration enabled.");
-        else logger.info("All narration disabled.");
+        final boolean all = selectedSources.contains(Source.ALL);
+        if (all)
+            logger.debug("All narration enabled.");
+        else
+            logger.debug("All narration disabled.");
         props.setAll(all);
 
-        logger.info("Selected sources: " + Source.toString(sources));
+        logger.debug("Selected sources: " + Source.toString(selectedSources));
 
-        VoiceGenerator.getInstance().loadCurrentSource(Source.toString(sources));
+        VoiceGenerator.getInstance().loadCurrentSource(Source.toString(selectedSources));
         VoiceGenerator.getInstance().saveConfig();
     }
 
     public void selectVoice() {
         final String rawVoiceId = voices.getValue();
-        if (VoiceGenerator.setCurrentVoice(rawVoiceId)) previousSelection = rawVoiceId;
+        if (VoiceGenerator.setCurrentVoice(rawVoiceId))
+            previousSelection = rawVoiceId;
     }
 
     public void toggleTeamChat() throws IOException {
         if (VoiceGenerator.getInstance().toggleTeamKey()) {
-            logger.info("Toggled Team Chat PTT ON");
+            logger.debug("Toggled Team Chat PTT ON");
         } else {
-            logger.info("Toggled Team Chat PTT OFF");
+            logger.debug("Toggled Team Chat PTT OFF");
         }
     }
 
     public void togglePrivateMessages() {
         if (privateChatButton.isSelected()) {
             ChatDataHandler.getInstance().getProperties().setPrivateEnabled();
-            logger.info("Toggled Private Messages ON");
+            logger.debug("Toggled Private Messages ON");
         } else {
             ChatDataHandler.getInstance().getProperties().setPrivateDisabled();
-            logger.info("Toggled Private Messages OFF");
+            logger.debug("Toggled Private Messages OFF");
         }
     }
 
     public void toggleMic() {
+        String soundVolumeView = String.format("%s/ValorantNarrator/SoundVolumeView.exe",
+                System.getenv("ProgramFiles").replace("\\", "/"));
         if (micButton.isSelected()) {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            try {
-                String command = fileLocation + " /SetPlaybackThroughDevice \"DefaultCaptureDevice\" \"CABLE Input\"";
-                Runtime.getRuntime().exec(command);
-                command = fileLocation + " /SetListenToThisDevice \"DefaultCaptureDevice\" 1";
-                Runtime.getRuntime().exec(command);
-            } catch (IOException ignored) {
-            }
-            logger.info("Toggled Mic ON");
-
+            ProcessUtil.runDetached(soundVolumeView, "/SetPlaybackThroughDevice", "DefaultCaptureDevice",
+                    "CABLE Input");
+            ProcessUtil.runDetached(soundVolumeView, "/SetListenToThisDevice", "DefaultCaptureDevice", "1");
+            logger.debug("Toggled Mic ON");
         } else {
-            try {
-                String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-                String command = fileLocation + " /SetPlaybackThroughDevice \"DefaultCaptureDevice\" \"CABLE Input\"";
-                Runtime.getRuntime().exec(command);
-                command = fileLocation + " /SetListenToThisDevice \"DefaultCaptureDevice\" 0";
-                Runtime.getRuntime().exec(command);
-            } catch (IOException ignored) {
-            }
-            logger.info("Toggled Mic OFF");
-        }
-    }
-
-    @Override
-    public void dispatchError(XMPPError error) throws InterruptedException, ExecutionException, IOException {
-        if (error.code() == 500) {
-            logger.error("Exiting due to an unknown error!");
-            Platform.runLater(() -> {
-                showAlertAndWait("", "An internal server error occurred, please try again later.");
-                System.exit(-1);
-            });
-        } else {
-            logger.error("Exiting due to {}", error.reason());
-            CompletableFuture.runAsync(() -> {
-                Platform.runLater(() -> {
-                    showAlertAndWait("", error.reason());
-                    System.exit(-1);
-                });
-            });
-        }
-    }
-
-    @Override
-    public void dispatchEvent(XMPPEvent event) {
-        if (event.data().contains("<?xml version='1.0'?>")) {
-            Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Riot client opened."));
-        } else if (event.data().contains("_xmpp_session1")) {
-            Platform.runLater(() -> ValNarratorController.getLatestInstance().progressLoginLabel.setText("Valorant opened."));
-            isLoading = false;
-            btnPower.setOpacity(1);
-            btnInfo.setOpacity(1);
-            btnUser.setOpacity(1);
-            btnSettings.setOpacity(1);
-            VoiceGenerator.initializeAgentSynthesizer();
+            ProcessUtil.runDetached(soundVolumeView, "/SetPlaybackThroughDevice", "DefaultCaptureDevice",
+                    "CABLE Input");
+            ProcessUtil.runDetached(soundVolumeView, "/SetListenToThisDevice", "DefaultCaptureDevice", "0");
+            logger.debug("Toggled Mic OFF");
         }
     }
 

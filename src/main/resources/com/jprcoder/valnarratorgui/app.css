@@ -1,0 +1,597 @@
+/*
+ * Main-window theme. Attached at the scene root in ValNarratorApplication.
+ * The FXML uses styleClasses (no inline colors), so all theming lives here.
+ */
+
+/* ===== App shell ===== */
+.app-card {
+    -fx-background-color: linear-gradient(to bottom, #1b2937, #0c1219);
+    -fx-background-image: url("appBackground.png");
+    -fx-background-size: 380 660;
+    -fx-background-position: center;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: rgba(255, 255, 255, 0.10);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.65), 22, 0.2, 0, 5);
+}
+
+.nav-bar {
+    -fx-min-height: 56;
+    -fx-pref-height: 56;
+    -fx-background-color: rgba(9, 14, 20, 0.55);
+    -fx-background-radius: 20 20 0 0;
+    -fx-border-color: transparent transparent rgba(255, 255, 255, 0.08) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.brand {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
+    -fx-text-fill: white;
+    -fx-content-display: right;
+    -fx-graphic-text-gap: 0;
+}
+
+.brand-accent {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
+    -fx-text-fill: #FF4655;
+}
+
+.nav-icon {
+    -fx-cursor: hand;
+}
+
+.content-area,
+.tab {
+    -fx-background-color: transparent;
+}
+
+/* Uniform height for label-and-control rows, so vertical spacing reads evenly. */
+.row {
+    -fx-min-height: 46;
+    -fx-alignment: center-left;
+}
+
+/* ===== Titles ===== */
+.tab-title {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 26px;
+    -fx-text-fill: white;
+}
+
+.tab-title-accent {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 28px;
+    -fx-text-fill: linear-gradient(to bottom right, #FF4655, #C42A37);
+}
+
+.tab-title-premium {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 28px;
+    -fx-text-fill: linear-gradient(to bottom right, #E6C463, #B8932E);
+}
+
+/* ===== Section text ===== */
+.section-header {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.section-desc {
+    -fx-font-size: 10.5px;
+    -fx-text-fill: #94a2b0;
+}
+
+.hint-text {
+    -fx-font-size: 11px;
+    -fx-font-style: italic;
+    -fx-text-fill: #8595a4;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
+}
+
+.status-chip {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FF4655;
+    -fx-border-color: rgba(255, 70, 85, 0.6);
+    -fx-border-radius: 10;
+    -fx-padding: 2 10 2 10;
+}
+
+.status-text {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e9eef3;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
+}
+
+.stat-key {
+    -fx-font-size: 11.5px;
+    -fx-text-fill: #c4ced8;
+}
+
+.stat-value {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.stat-value-left {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e9eef3;
+}
+
+/* ===== Stat cards (Narrator tab) ===== */
+.stat-card {
+    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-border-color: rgba(255, 255, 255, 0.10);
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-padding: 11 14 11 14;
+    -fx-spacing: 1;
+}
+
+.stat-card-value {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 24px;
+    -fx-text-fill: white;
+}
+
+.stat-card-label {
+    -fx-font-size: 10.5px;
+    -fx-text-fill: #9fb0c0;
+}
+
+/* ===== Loading spinner ===== */
+.login-spinner {
+    -fx-progress-color: #FF4655;
+}
+
+.soft-sep .line {
+    -fx-border-color: rgba(255, 255, 255, 0.10);
+    -fx-border-width: 1 0 0 0;
+}
+
+/* Pinned action bar at the bottom of the Settings tab. */
+.settings-actions {
+    -fx-background-color: rgba(9, 14, 20, 0.40);
+    -fx-border-color: rgba(255, 255, 255, 0.08) transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ===== Buttons ===== */
+.primary-button {
+    -fx-background-color: #FF4655;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-cursor: hand;
+    -fx-padding: 8 14 8 14;
+}
+
+.primary-button:hover {
+    -fx-background-color: #ff5d6a;
+}
+
+.primary-button:pressed {
+    -fx-background-color: #e23a48;
+}
+
+.ghost-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255, 255, 255, 0.45);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+    -fx-padding: 8 14 8 14;
+}
+
+.ghost-button:hover {
+    -fx-border-color: #FF4655;
+    -fx-text-fill: #ffd9dd;
+}
+
+.premium-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: linear-gradient(to right, #E6C463, #C9A23C);
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 16px;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(212, 175, 55, 0.7);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+    -fx-padding: 10 14 10 14;
+}
+
+.premium-button:hover {
+    -fx-background-color: rgba(212, 175, 55, 0.12);
+}
+
+/* ===== ComboBox (closed control) ===== */
+.app-combo {
+    -fx-background-color: rgba(20, 32, 43, 0.85);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255, 255, 255, 0.40);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.app-combo:hover {
+    -fx-border-color: #FF4655;
+}
+
+.app-combo > .list-cell {
+    -fx-text-fill: white;
+    -fx-background-color: transparent;
+    -fx-padding: 4 8 4 8;
+}
+
+.app-combo .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.app-combo .arrow {
+    -fx-background-color: #c4ced8;
+}
+
+/* ===== Table (Full-forms editor) ===== */
+.app-table {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-border-color: rgba(255, 255, 255, 0.10);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}
+
+.app-table:focused {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+}
+
+.app-table .column-header-background {
+    -fx-background-color: #16222E;
+    -fx-background-radius: 8 8 0 0;
+}
+
+.app-table .column-header-background .filler {
+    -fx-background-color: transparent;
+}
+
+.app-table .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent rgba(255, 255, 255, 0.06) transparent transparent;
+    -fx-size: 34;
+}
+
+.app-table .column-header .label {
+    -fx-text-fill: #c4ced8;
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+    -fx-padding: 0 0 0 8;
+}
+
+.app-table .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-table-cell-border-color: transparent;
+    -fx-cell-size: 30;
+}
+
+.app-table .table-row-cell:odd {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+}
+
+.app-table .table-row-cell:selected {
+    -fx-background-color: rgba(255, 70, 85, 0.30);
+}
+
+.app-table .table-cell {
+    -fx-text-fill: #dce3ea;
+    -fx-border-color: transparent;
+    -fx-padding: 6 8 6 8;
+}
+
+.app-table .corner {
+    -fx-background-color: #16222E;
+}
+
+.app-table .text-field {
+    -fx-background-color: #0E1721;
+    -fx-text-fill: white;
+    -fx-border-color: #FF4655;
+}
+
+.app-combo .text-field {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #8b97a3;
+}
+
+/* Drop-down popup */
+.combo-box-popup .list-view {
+    -fx-background-color: #14202B;
+    -fx-border-color: rgba(255, 70, 85, 0.55);
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-background-color: #14202B;
+    -fx-text-fill: #e6e6e6;
+    -fx-padding: 5 10 5 10;
+}
+
+.combo-box-popup .list-view .list-cell:filled:selected,
+.combo-box-popup .list-view .list-cell:filled:hover {
+    -fx-background-color: #FF4655;
+    -fx-text-fill: white;
+}
+
+/* ===== Keybind capture field ===== */
+.key-field {
+    -fx-background-color: rgba(20, 32, 43, 0.90);
+    -fx-text-fill: white;
+    -fx-alignment: center;
+    -fx-prompt-text-fill: #8b97a3;
+    -fx-highlight-fill: #FF4655;
+    -fx-highlight-text-fill: white;
+    -fx-border-color: rgba(255, 255, 255, 0.40);
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.key-field:focused {
+    -fx-border-color: #FF4655;
+}
+
+/* ===== Progress bars ===== */
+.progress-bar > .track {
+    -fx-background-color: rgba(255, 255, 255, 0.10);
+    -fx-background-radius: 5em;
+}
+
+.progress-bar > .bar {
+    -fx-background-color: linear-gradient(to right, #FF4655, #D22D3A);
+    -fx-background-insets: 1;
+    -fx-background-radius: 5em;
+}
+
+.progress-bar:indeterminate > .bar {
+    -fx-background-color: linear-gradient(to right, rgba(255, 70, 85, 0.15), #FF4655, rgba(255, 70, 85, 0.15));
+}
+
+/* ===== Slider ===== */
+.slider {
+    -fx-padding: 6 0 6 0;
+}
+
+.slider .track {
+    -fx-background-color: rgba(255, 255, 255, 0.16);
+    -fx-background-radius: 6px;
+    -fx-background-insets: 0;
+    -fx-pref-height: 6px;
+}
+
+.slider .thumb {
+    -fx-background-color: #FF4655;
+    -fx-background-radius: 50%;
+    -fx-pref-width: 16px;
+    -fx-pref-height: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(255, 70, 85, 0.55), 6, 0, 0, 0);
+}
+
+.slider .axis {
+    -fx-tick-label-fill: #c2ccd6;
+    -fx-font-size: 9px;
+}
+
+.slider .axis-tick-mark,
+.slider .axis-minor-tick-mark {
+    -fx-stroke: rgba(255, 255, 255, 0.35);
+}
+
+/* ===== JFoenix toggles: Valorant-red "on" state (white thumb via FXML) ===== */
+.jfx-toggle-button {
+    -jfx-toggle-line-color: rgba(255, 70, 85, 0.55);
+    -jfx-untoggle-color: #c9d2db;
+    -jfx-untoggle-line-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ===== ScrollPane (settings tab) ===== */
+.tab-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.tab-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.tab-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 8;
+}
+
+.tab-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.25);
+    -fx-background-radius: 6;
+}
+
+.tab-scroll .scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+.tab-scroll .scroll-bar .increment-button,
+.tab-scroll .scroll-bar .decrement-button {
+    -fx-pref-height: 0;
+    -fx-opacity: 0;
+}
+
+/* ===== Tooltip ===== */
+.tooltip {
+    -fx-background-color: #0F1923;
+    -fx-text-fill: white;
+    -fx-border-color: #FF4655;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+/* ===== Paused (narration disabled) overlay ===== */
+.paused-overlay {
+    -fx-background-color: rgba(8, 12, 18, 0.82);
+}
+
+.paused-title {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 22px;
+    -fx-text-fill: #FF4655;
+}
+
+.paused-desc {
+    -fx-font-size: 12px;
+    -fx-text-fill: #b9c4cf;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
+}
+
+/* Power icon highlighted while narration is paused. */
+.power-active {
+    -fx-effect: dropshadow(gaussian, #FF4655, 10, 0.6, 0, 0);
+}
+
+/* ===== Plan badges ===== */
+.premium-badge {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1a1206;
+    -fx-background-color: linear-gradient(to right, #E6C463, #C9A23C);
+    -fx-background-radius: 10;
+    -fx-padding: 2 12 2 12;
+}
+
+.free-badge {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #c4ced8;
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-border-color: rgba(255, 255, 255, 0.25);
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 2 12 2 12;
+}
+
+/* ===== Subscription modal ===== */
+.sub-root {
+    -fx-background-color: linear-gradient(to bottom, #15202B, #0E1721);
+}
+
+.sub-hero {
+    -fx-background-color: linear-gradient(to bottom right, rgba(255, 70, 85, 0.16), rgba(15, 25, 35, 0));
+    -fx-border-color: transparent transparent rgba(255, 255, 255, 0.08) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.sub-brand {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8fa0b0;
+}
+
+.sub-modal-title {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 30px;
+    -fx-text-fill: linear-gradient(to bottom right, #FF4655, #C42A37);
+}
+
+.sub-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: #b9c4cf;
+}
+
+.sub-uid-field {
+    -fx-background-color: rgba(0, 0, 0, 0.30);
+    -fx-text-fill: #e9eef3;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 13px;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-highlight-fill: #FF4655;
+    -fx-highlight-text-fill: white;
+}
+
+.price-card,
+.price-card-recommended {
+    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-border-color: rgba(255, 255, 255, 0.12);
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+.price-card-recommended {
+    -fx-border-color: #FF4655;
+    -fx-background-color: rgba(255, 70, 85, 0.08);
+}
+
+.price-card-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #9fb0c0;
+}
+
+.price-tag {
+    -fx-font-family: "Candara";
+    -fx-font-weight: bold;
+    -fx-font-size: 30px;
+    -fx-text-fill: white;
+}
+
+.price-period {
+    -fx-font-size: 13px;
+    -fx-text-fill: #9fb0c0;
+}
+
+.price-sub {
+    -fx-font-size: 11px;
+    -fx-text-fill: #93a2b1;
+}
+
+.price-tag-best {
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-background-color: #FF4655;
+    -fx-background-radius: 8;
+    -fx-padding: 1 8 1 8;
+}
+
+.benefit-dot {
+    -fx-background-color: #FF4655;
+    -fx-background-radius: 4;
+}
+
+.benefit-text {
+    -fx-font-size: 13px;
+    -fx-text-fill: #dce3ea;
+}

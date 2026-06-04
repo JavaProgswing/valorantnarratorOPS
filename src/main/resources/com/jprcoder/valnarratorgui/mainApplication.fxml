@@ -2,526 +2,352 @@
 
 <?import com.jfoenix.controls.JFXToggleButton?>
 <?import javafx.collections.FXCollections?>
+<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.paint.*?>
-<?import javafx.scene.text.*?>
 <?import java.lang.*?>
-<AnchorPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="614.0" prefWidth="386.0"
-            style="-fx-background-color: transparent;" xmlns="http://javafx.com/javafx/17.0.12"
-            fx:controller="com.jprcoder.valnarratorgui.ValNarratorController">
-    <AnchorPane fx:id="topBar" prefHeight="55.0" prefWidth="377.0" style="-fx-background-color: #1C2C3C;">
-        <ImageView fx:id="btnUser" fitHeight="38.0" fitWidth="32.0" layoutX="124.0" layoutY="13.0"
-                   onMouseClicked="#handleButtonAction" opacity="0.4" pickOnBounds="true" preserveRatio="true">
-            <Image url="@user.png"/>
-        </ImageView>
-        <ImageView fx:id="btnInfo" fitHeight="34.0" fitWidth="32.0" layoutX="219.0" layoutY="13.0"
-                   onMouseClicked="#handleButtonAction" opacity="0.4" pickOnBounds="true" preserveRatio="true">
-            <Image url="@info.png"/>
-        </ImageView>
-        <ImageView fx:id="btnPower" fitHeight="28.0" fitWidth="32.0" layoutX="37.0" layoutY="15.0"
-                   onMouseClicked="#handleButtonAction" opacity="0.4" pickOnBounds="true" preserveRatio="true">
-            <Image url="@power.png"/>
-        </ImageView>
-        <ImageView fx:id="btnSettings" fitHeight="32.0" fitWidth="53.0" layoutX="314.0" layoutY="13.0"
-                   onMouseClicked="#handleButtonAction" opacity="0.4" pickOnBounds="true" preserveRatio="true">
-            <Image url="@setting.png"/>
-        </ImageView>
-        <Separator layoutX="276.0" orientation="VERTICAL" prefHeight="57.0" prefWidth="7.0"/>
-        <Separator layoutX="185.0" orientation="VERTICAL" prefHeight="57.0" prefWidth="7.0"/>
-        <Separator layoutX="92.0" orientation="VERTICAL" prefHeight="57.0" prefWidth="7.0"/>
-    </AnchorPane>
-    <AnchorPane fx:id="panelUser" layoutY="73.0" prefHeight="415.0" prefWidth="377.0"
-                style="-fx-background-color: transparent;" visible="false">
-        <ImageView fitHeight="444.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
-            <Image url="@appBackgroundBLUR.png"/>
-        </ImageView>
-        <Label layoutX="25.0" layoutY="58.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR VOICE" textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <ComboBox id="voices" fx:id="voices" layoutX="160.0" layoutY="71.0" onAction="#selectVoice"
-                  onHidden="#hideVoices" onShown="#showVoices" prefHeight="28.0" prefWidth="180.0"
-                  promptText="Matthew, male"
-                  style="-fx-border-color: white; -fx-background-radius: 5em; -fx-border-radius: 5em;"
-                  stylesheets="@comboBoxStyle.css">
-            <items>
-                <FXCollections fx:factory="observableArrayList">
-                    <String fx:value="Matthew, male"/>
-                    <String fx:value="Justin, male"/>
-                    <String fx:value="Joey, male"/>
-                    <String fx:value="Brian, male"/>
-                    <String fx:value="Joanna, female"/>
-                    <String fx:value="Ivy, female"/>
-                    <String fx:value="Kendra, female"/>
-                    <String fx:value="Kajal, female"/>
-                    <String fx:value="Astra, VALORANT"/>
-                    <String fx:value="Breach, VALORANT"/>
-                    <String fx:value="Brimstone, VALORANT"/>
-                    <String fx:value="Chamber, VALORANT"/>
-                    <String fx:value="Clove, VALORANT"/>
-                    <String fx:value="Cypher, VALORANT"/>
-                    <String fx:value="Deadlock, VALORANT"/>
-                    <String fx:value="Fade, VALORANT"/>
-                    <String fx:value="Gekko, VALORANT"/>
-                    <String fx:value="Harbor, VALORANT"/>
-                    <String fx:value="Jett, VALORANT"/>
-                    <String fx:value="KAYO, VALORANT"/>
-                    <String fx:value="Killjoy, VALORANT"/>
-                    <String fx:value="Neon, VALORANT"/>
-                    <String fx:value="Omen, VALORANT"/>
-                    <String fx:value="Phoenix, VALORANT"/>
-                    <String fx:value="Raze, VALORANT"/>
-                    <String fx:value="Reyna, VALORANT"/>
-                    <String fx:value="Tejo, VALORANT"/>
-                    <String fx:value="Sage, VALORANT"/>
-                    <String fx:value="Skye, VALORANT"/>
-                    <String fx:value="Sova, VALORANT"/>
-                    <String fx:value="Viper, VALORANT"/>
-                    <String fx:value="Veto, VALORANT"/>
-                    <String fx:value="Vyse, VALORANT"/>
-                    <String fx:value="Yoru, VALORANT"/>
-                </FXCollections>
-            </items>
-        </ComboBox>
-        <Label layoutX="25.0" layoutY="81.0" prefHeight="32.0" prefWidth="107.0"
-               text="Change speaker voice for text narration." textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
+<StackPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="680.0" prefWidth="400.0"
+           style="-fx-background-color: transparent;" xmlns="http://javafx.com/javafx/17.0.12"
+           fx:controller="com.jprcoder.valnarratorgui.ValNarratorController">
+    <padding>
+        <Insets bottom="10" left="10" right="10" top="10"/>
+    </padding>
 
-        <Label layoutX="20.0" layoutY="360.0" prefHeight="25.0" prefWidth="117.0" text="REMAINING QUOTA"
-               textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label layoutX="20.0" layoutY="384.0" prefHeight="28.0" prefWidth="101.0"
-               text="Remaining messages for today's quota." textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <Separator layoutX="19.0" layoutY="201.0" prefHeight="19.0" prefWidth="346.0"/>
-        <Separator layoutX="21.0" layoutY="332.0" prefHeight="19.0" prefWidth="346.0"/>
-        <ProgressBar fx:id="quotaBar" layoutX="160.0" layoutY="374.0" prefHeight="19.0" prefWidth="180.0" progress="1.0"
-                     style="-fx-background-radius: 5em; -fx-border-radius: 5em;"/>
-        <Label layoutX="25.0" layoutY="232.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR STATS"
-               textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label layoutX="25.0" layoutY="258.0" prefHeight="34.0" prefWidth="107.0" text="Messages sent today:"
-               textFill="WHITE" wrapText="true">
-            <font>
-                <Font size="10.0"/>
-            </font>
-        </Label>
-        <Label layoutX="25.0" layoutY="292.0" prefHeight="34.0" prefWidth="117.0" text="Characters narrated today:"
-               textFill="WHITE" wrapText="true">
-            <font>
-                <Font size="10.0"/>
-            </font>
-        </Label>
-        <Label fx:id="messagesSentLabel" layoutX="187.0" layoutY="258.0" prefHeight="34.0" prefWidth="107.0" text="0"
-               textAlignment="RIGHT" textFill="WHITE" wrapText="true">
-            <font>
-                <Font name="System Bold" size="11.0"/>
-            </font>
-        </Label>
-        <Label fx:id="charactersNarratedLabel" layoutX="188.0" layoutY="292.0" prefHeight="34.0" prefWidth="107.0"
-               text="0" textAlignment="RIGHT" textFill="WHITE" wrapText="true">
-            <font>
-                <Font name="System Bold" size="11.0"/>
-            </font>
-        </Label>
-        <ImageView fitHeight="34.0" fitWidth="25.0" layoutX="130.0" layoutY="-14.0" pickOnBounds="true"
-                   preserveRatio="true">
-            <Image url="@arrowUp.png"/>
-        </ImageView>
-        <Label fx:id="windowTitle" layoutX="134.0" layoutY="15.0" prefHeight="34.0" prefWidth="107.0" text="Narrator"
-               textAlignment="RIGHT" underline="true" visible="true">
-            <font>
-                <Font name="Candara Bold" size="28.0"/>
-            </font>
-            <textFill>
-                <LinearGradient>
-                    <stops>
-                        <Stop>
-                            <color>
-                                <Color red="1.0" green="1.0" blue="1.0"/>
-                            </color>
-                        </Stop>
-                        <Stop offset="1.0">
-                            <color>
-                                <Color red="1.0" green="1.0" blue="1.0"/>
-                            </color>
-                        </Stop>
-                    </stops>
-                </LinearGradient>
-            </textFill>
-        </Label>
-        <Label fx:id="premiumWindowTitle" layoutX="135.0" layoutY="15.0" prefHeight="34.0" prefWidth="107.0"
-               text="Narrator" textAlignment="RIGHT" underline="true" visible="false">
-            <font>
-                <Font name="Candara Bold" size="28.0"/>
-            </font>
-            <textFill>
-                <LinearGradient endY="0.6624606054287979" startX="1.0">
-                    <stops>
-                        <Stop>
-                            <color>
-                                <Color red="0.8399999737739563" green="0.7275800108909607" blue="0.22679999470710754"/>
-                            </color>
-                        </Stop>
-                        <Stop offset="0.919081137120096">
-                            <color>
-                                <Color red="0.8199999928474426" green="0.7035599946975708" blue="0.2378000020980835"
-                                       opacity="0.7892894148826599"/>
-                            </color>
-                        </Stop>
-                        <Stop offset="1.0">
-                            <color>
-                                <Color red="0.8299999833106995" green="0.7204399704933167" blue="0.23240000009536743"
-                                       opacity="0.6725888252258301"/>
-                            </color>
-                        </Stop>
-                    </stops>
-                </LinearGradient>
-            </textFill>
-        </Label>
-        <Label layoutX="25.0" layoutY="128.0" prefHeight="25.0" prefWidth="117.0" text="NARRATOR RATE" textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label layoutX="28.0" layoutY="153.0" prefHeight="28.0" prefWidth="101.0"
-               text="Change speaker voice rate for text narration." textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <Slider fx:id="rateSlider" layoutX="152.0" layoutY="141.0" max="200.0" prefHeight="38.0" prefWidth="195.0"
-                showTickLabels="true" showTickMarks="true" snapToTicks="true" stylesheets="@sliderStyle.css"
-                value="100.0"/>
+    <VBox styleClass="app-card">
 
-    </AnchorPane>
-    <AnchorPane fx:id="panelSettings" layoutY="72.0" prefHeight="531.0" prefWidth="370.0"
-                style="-fx-background-color: transparent;" visible="false">
-        <ImageView fitHeight="540.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
-            <Image url="@appBackgroundBLUR.png"/>
-        </ImageView>
-        <Label layoutX="25.0" layoutY="17.0" prefHeight="7.0" prefWidth="117.0" text="NARRATOR SOURCE" textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <ComboBox fx:id="sources" layoutX="195.0" layoutY="34.0" onAction="#selectSource" prefHeight="28.0"
-                  prefWidth="133.0" promptText="SELF" style="-fx-border-color: white; -fx-background-radius: 5em;"
-                  stylesheets="@comboBoxStyle.css">
-            <items>
-                <FXCollections fx:factory="observableArrayList">
-                    <String fx:value="SELF"/>
-                    <String fx:value="TEAM"/>
-                    <String fx:value="TEAM+ALL"/>
-                    <String fx:value="SELF+TEAM+ALL"/>
-                    <String fx:value="PARTY"/>
-                    <String fx:value="PARTY+ALL"/>
-                    <String fx:value="SELF+PARTY+ALL"/>
-                    <String fx:value="PARTY+TEAM"/>
-                    <String fx:value="PARTY+TEAM+ALL"/>
-                    <String fx:value="SELF+PARTY+TEAM+ALL"/>
-                </FXCollections>
-            </items>
-        </ComboBox>
-        <Label layoutX="25.0" layoutY="34.0" prefHeight="28.0" prefWidth="117.0"
-               text="Selects the sources to narrate messages from." textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <Separator layoutY="466.0" prefHeight="28.0" prefWidth="377.0"/>
-        <Label layoutX="25.0" layoutY="126.0" prefHeight="17.0" prefWidth="117.0" text="SYSTEM MIC" textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label layoutX="24.0" layoutY="143.0" prefHeight="28.0" prefWidth="146.0"
-               text="Toggle to stream your default mic's audio along with ValNarrator." textFill="#f2efef"
-               wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <JFXToggleButton fx:id="micButton" layoutX="229.0" layoutY="128.0" onAction="#toggleMic" prefHeight="58.0"
-                         prefWidth="55.0" text=" " toggleColor="WHITE"/>
-        <Label layoutX="25.0" layoutY="72.0" prefHeight="0.0" prefWidth="117.0" text="TOGGLE PRIVATE" textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label layoutX="25.0" layoutY="89.0" prefHeight="28.0" prefWidth="117.0"
-               text="Toggle if private messages will be allowed." textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <JFXToggleButton fx:id="privateChatButton" layoutX="229.0" layoutY="74.0" onAction="#togglePrivateMessages"
-                         prefHeight="58.0" prefWidth="55.0" text=" " toggleColor="WHITE"/>
-        <Label layoutX="19.0" layoutY="185.0" prefHeight="17.0" prefWidth="155.0" text=" TEAM PUSH TO TALK KEY"
-               textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label fx:id="keybindText" layoutX="25.0" layoutY="198.0" prefHeight="38.0" prefWidth="140.0"
-               text="Pick a keybind for team mic, currently set to " textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <TextField fx:id="keybindTextField" layoutX="196.0" layoutY="194.0" onKeyPressed="#keybindChange"
-                   onMouseDragEntered="#enterKeybind" onMouseDragExited="#exitKeybind" onMouseEntered="#enterKeybind"
-                   onMouseExited="#exitKeybind" prefHeight="25.0" prefWidth="140.0" promptText="Press a key."/>
-        <JFXToggleButton fx:id="teamChatButton" layoutX="229.0" layoutY="248.0" onAction="#toggleTeamChat"
-                         prefHeight="58.0" prefWidth="49.0" selected="true" text=" " toggleColor="WHITE"/>
-        <Label layoutX="25.0" layoutY="244.0" prefHeight="13.0" prefWidth="117.0" text="TOGGLE TEAM KEY"
-               textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label layoutX="25.0" layoutY="261.0" prefHeight="32.0" prefWidth="133.0"
-               text="Toggle to press the team push to talk key automatically." textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <Label layoutX="25.0" layoutY="303.0" prefHeight="13.0" prefWidth="163.0" text="SYNC VOICE SETTINGS"
-               textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label layoutX="25.0" layoutY="320.0" prefHeight="28.0" prefWidth="133.0"
-               text="Toggle to sync voice settings to valorant before start-up." textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <JFXToggleButton fx:id="valorantSettings" layoutX="229.0" layoutY="305.0" onAction="#syncValorantSettingsToggle"
-                         prefHeight="58.0" prefWidth="49.0" selected="true" text=" " toggleColor="WHITE"/>
-        <Button fx:id="voiceSettingsSync" defaultButton="true" layoutX="50.0" layoutY="494.0" mnemonicParsing="false"
-                onAction="#syncValorantSettings" prefHeight="17.0" prefWidth="289.0"
-                style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
-                text="Sync voice settings to valorant." textAlignment="CENTER" textFill="WHITE">
-            <font>
-                <Font size="14.0"/>
-            </font>
-        </Button>
-        <Label layoutX="25.0" layoutY="363.0" prefHeight="13.0" prefWidth="163.0" text="IGNORE PLAYER MESSAGES"
-               textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label layoutX="25.0" layoutY="379.0" prefHeight="28.0" prefWidth="133.0"
-               text="Select Individual players to ignore messages from." textFill="#f2efef" wrapText="true">
-            <font>
-                <Font size="9.0"/>
-            </font>
-        </Label>
-        <ComboBox fx:id="playerDropdown" editable="true" layoutX="21.0" layoutY="420.0" onAction="#handlePlayerAction"
-                  prefHeight="28.0" prefWidth="334.0" promptText="Type to Ignore / Select to Toggle"
-                  style="-fx-border-color: white; -fx-background-radius: 5em;" stylesheets="@comboBoxStyle.css">
-            <items>
-                <FXCollections fx:factory="observableArrayList">
-                </FXCollections>
-            </items>
-        </ComboBox>
-        <ImageView fitHeight="34.0" fitWidth="25.0" layoutX="316.0" layoutY="-14.0" pickOnBounds="true"
-                   preserveRatio="true">
-            <image>
-                <Image url="@arrowUp.png"/>
-            </image>
-        </ImageView>
-    </AnchorPane>
-    <AnchorPane fx:id="panelInfo" layoutY="82.0" prefHeight="377.0" prefWidth="377.0"
-                style="-fx-background-color: transparent;" visible="false">
-        <ImageView fitHeight="414.0" fitWidth="377.0" layoutY="-3.0" pickOnBounds="true">
-            <Image url="@appBackgroundBLUR.png"/>
-        </ImageView>
-        <ImageView fitHeight="102.0" fitWidth="93.0" layoutX="142.0" layoutY="13.0" pickOnBounds="true"
-                   preserveRatio="true">
-            <Image url="@userBIG.png"/>
-        </ImageView>
-        <Label layoutX="25.0" layoutY="168.0" prefHeight="25.0" prefWidth="117.0" text="User ID:" textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <TextField fx:id="userIDLabel" editable="false" layoutX="142.0" layoutY="164.0" prefHeight="34.0"
-                   prefWidth="117.0" styleClass="copyable-text-field" stylesheets="@styles.css" text="N/A">
-            <font>
-                <Font name="System Bold" size="9.0"/>
-            </font>
-        </TextField>
-        <Label layoutX="25.0" layoutY="204.0" prefHeight="25.0" prefWidth="117.0" text="Quota left:" textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label fx:id="quotaLabel" layoutX="142.0" layoutY="200.0" prefHeight="34.0" prefWidth="117.0" text="999/999"
-               textFill="#f2efef" wrapText="true">
-            <font>
-                <Font name="System Bold" size="9.0"/>
-            </font>
-        </Label>
-        <Label layoutX="25.0" layoutY="238.0" prefHeight="25.0" prefWidth="117.0" text="Premium:" textFill="WHITE">
-            <font>
-                <Font name="System Bold" size="12.0"/>
-            </font>
-        </Label>
-        <Label fx:id="premiumDateLabel" layoutX="142.0" layoutY="234.0" prefHeight="34.0" prefWidth="146.0"
-               text="Vaild till DD-MM-YYYY HH:MM" textFill="#f2efef" wrapText="true">
-            <font>
-                <Font name="System Bold" size="9.0"/>
-            </font>
-        </Label>
-        <Button fx:id="subscribeButton" defaultButton="true" layoutX="27.0" layoutY="286.0" mnemonicParsing="false"
-                onAction="#browseSubscription" prefHeight="42.0" prefWidth="324.0"
-                style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
-                text="View subscription info" textAlignment="CENTER">
-            <font>
-                <Font name="Candara Bold" size="20.0"/>
-            </font>
-            <textFill>
-                <LinearGradient endY="0.9873817064784679" startX="1.0">
-                    <stops>
-                        <Stop>
-                            <color>
-                                <Color red="0.8313725590705872" green="0.7176470756530762" blue="0.250980406999588"/>
-                            </color>
-                        </Stop>
-                        <Stop offset="0.5233125988978009">
-                            <color>
-                                <Color red="0.8313725590705872" green="0.7176470756530762" blue="0.250980406999588"/>
-                            </color>
-                        </Stop>
-                        <Stop offset="0.6636792710208981">
-                            <color>
-                                <Color red="0.550000011920929" green="0.527999997138977" blue="0.10999999940395355"/>
-                            </color>
-                        </Stop>
-                        <Stop offset="1.0">
-                            <color>
-                                <Color red="0.8299999833106995" green="0.7138000130653381" blue="0.24899999797344208"
-                                       opacity="0.6700000166893005"/>
-                            </color>
-                        </Stop>
-                    </stops>
-                </LinearGradient>
-            </textFill>
-        </Button>
-        <Button defaultButton="true" layoutX="223.0" layoutY="360.0" mnemonicParsing="false"
-                onAction="#openDiscordInvite" prefHeight="32.0" prefWidth="140.0"
-                style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
-                text="Join us on discord!" textAlignment="CENTER" textFill="WHITE">
-            <font>
-                <Font size="14.0"/>
-            </font>
-        </Button>
-        <Label layoutX="14.0" layoutY="355.0" prefHeight="42.0" prefWidth="209.0"
-               text="Did something unexpected happen? Don't worry. Join us on our discord server." textFill="#f2efef"
-               wrapText="true">
-            <font>
-                <Font name="System Italic" size="11.0"/>
-            </font>
-        </Label>
-        <ImageView fitHeight="25.0" fitWidth="25.0" layoutX="223.0" layoutY="-15.0" pickOnBounds="true"
-                   preserveRatio="true">
-            <Image url="@arrowUp.png"/>
-        </ImageView>
-    </AnchorPane>
-    <AnchorPane fx:id="panelLogin" layoutY="73.0" prefHeight="313.0" prefWidth="386.0"
-                style="-fx-background-color: transparent;">
-        <ImageView fitHeight="292.0" fitWidth="377.0" layoutY="-2.0" pickOnBounds="true">
-            <Image url="@appBackgroundBLUR.png"/>
-        </ImageView>
-        <Label layoutX="110.0" layoutY="13.0" prefHeight="38.0" prefWidth="155.0" textFill="WHITE">
-            <font>
-                <Font name="Candara Bold" size="17.0"/>
-            </font>
-        </Label>
-        <Separator layoutX="14.0" layoutY="198.0" prefHeight="10.0" prefWidth="371.0"/>
-        <Label layoutX="71.0" layoutY="4.0" prefHeight="55.0" prefWidth="242.0" text="Narrator Premium"
-               textAlignment="RIGHT" underline="true" visible="false">
-            <font>
-                <Font name="Candara Bold" size="28.0"/>
-            </font>
-            <textFill>
-                <LinearGradient endY="0.6624606054287979" startX="1.0">
-                    <stops>
-                        <Stop>
-                            <color>
-                                <Color red="0.8399999737739563" green="0.7275800108909607" blue="0.22679999470710754"/>
-                            </color>
-                        </Stop>
-                        <Stop offset="0.919081137120096">
-                            <color>
-                                <Color red="0.8199999928474426" green="0.7035599946975708" blue="0.2378000020980835"
-                                       opacity="0.7892894148826599"/>
-                            </color>
-                        </Stop>
-                        <Stop offset="1.0">
-                            <color>
-                                <Color red="0.8299999833106995" green="0.7204399704933167" blue="0.23240000009536743"
-                                       opacity="0.6725888252258301"/>
-                            </color>
-                        </Stop>
-                    </stops>
-                </LinearGradient>
-            </textFill>
-        </Label>
-        <Label layoutX="59.0" layoutY="95.0" prefHeight="42.0" prefWidth="266.0"
-               text=" This window will automatically redirect to other windows when the startup process is completed!"
-               textFill="#fffefe" wrapText="true">
-            <font>
-                <Font name="System Italic" size="12.0"/>
-            </font>
-        </Label>
-        <ProgressBar fx:id="progressLogin" layoutX="59.0" layoutY="147.0" opacity="0.87" prefHeight="19.0"
-                     prefWidth="258.0" progress="1.0"/>
-        <Label fx:id="progressLoginLabel" layoutX="133.0" layoutY="28.0" prefHeight="42.0" prefWidth="163.0"
-               text="Preparing to start valorant" textAlignment="CENTER" textFill="#fffefe" wrapText="true">
-            <font>
-                <Font name="System Bold Italic" size="12.0"/>
-            </font>
-        </Label>
-        <Button defaultButton="true" layoutX="224.0" layoutY="231.0" mnemonicParsing="false"
-                onAction="#openDiscordInvite" prefHeight="32.0" prefWidth="140.0"
-                style="-fx-background-radius: 5em; -fx-border-radius: 5em; -fx-background-color: transparent; -fx-border-color: white;"
-                text="Join us on discord!" textAlignment="CENTER" textFill="WHITE">
-            <font>
-                <Font size="14.0"/>
-            </font>
-        </Button>
-        <Label layoutX="14.0" layoutY="226.0" prefHeight="42.0" prefWidth="209.0"
-               text="Did something unexpected happen? Don't worry. Join us on our discord server." textFill="#f2efef"
-               wrapText="true">
-            <font>
-                <Font name="System Italic" size="11.0"/>
-            </font>
-        </Label>
-        <Label fx:id="progressStatusLabel" layoutX="71.0" layoutY="41.0" prefHeight="18.0" prefWidth="61.0"
-               text="STATUS:" textFill="#fffefe">
-            <font>
-                <Font name="System Bold" size="13.0"/>
-            </font>
-        </Label>
-    </AnchorPane>
-</AnchorPane>
+        <!-- ===== NAV BAR (inside the card) ===== -->
+        <HBox fx:id="topBar" alignment="CENTER_LEFT" styleClass="nav-bar">
+            <padding>
+                <Insets bottom="0" left="18" right="16" top="0"/>
+            </padding>
+            <Label styleClass="brand" text="VAL">
+                <graphic>
+                    <Label styleClass="brand-accent" text="NARRATOR"/>
+                </graphic>
+            </Label>
+            <Region HBox.hgrow="ALWAYS"/>
+            <HBox alignment="CENTER" spacing="14">
+                <ImageView fx:id="btnUser" fitHeight="24" fitWidth="24" onMouseClicked="#handleButtonAction"
+                           opacity="0.4" pickOnBounds="true" preserveRatio="true" styleClass="nav-icon">
+                    <Image url="@user.png"/>
+                </ImageView>
+                <ImageView fx:id="btnInfo" fitHeight="24" fitWidth="24" onMouseClicked="#handleButtonAction"
+                           opacity="0.4" pickOnBounds="true" preserveRatio="true" styleClass="nav-icon">
+                    <Image url="@info.png"/>
+                </ImageView>
+                <ImageView fx:id="btnSettings" fitHeight="24" fitWidth="24" onMouseClicked="#handleButtonAction"
+                           opacity="0.4" pickOnBounds="true" preserveRatio="true" styleClass="nav-icon">
+                    <Image url="@setting.png"/>
+                </ImageView>
+                <Separator orientation="VERTICAL" prefHeight="22"/>
+                <ImageView fx:id="btnPower" fitHeight="22" fitWidth="22" onMouseClicked="#handleButtonAction"
+                           opacity="0.4" pickOnBounds="true" preserveRatio="true" styleClass="nav-icon">
+                    <Image url="@power.png"/>
+                </ImageView>
+            </HBox>
+        </HBox>
+
+        <!-- ===== CONTENT AREA (one panel visible) ===== -->
+        <StackPane fx:id="contentArea" styleClass="content-area" VBox.vgrow="ALWAYS">
+
+            <!-- ===== LOADING / LOGIN ===== -->
+            <VBox fx:id="panelLogin" alignment="CENTER" spacing="0" styleClass="tab">
+                <padding>
+                    <Insets bottom="22" left="26" right="26" top="22"/>
+                </padding>
+                <Region VBox.vgrow="ALWAYS"/>
+                <VBox alignment="CENTER" spacing="16">
+                    <ProgressIndicator prefHeight="54.0" prefWidth="54.0" styleClass="login-spinner"/>
+                    <Label styleClass="tab-title" text="Starting up"/>
+                    <Label fx:id="progressStatusLabel" styleClass="status-chip" text="STATUS"/>
+                    <Label fx:id="progressLoginLabel" maxWidth="300" styleClass="status-text"
+                           text="Preparing to start Valorant" textAlignment="CENTER" wrapText="true"/>
+                    <ProgressBar fx:id="progressLogin" prefHeight="8.0" prefWidth="260.0" progress="-1.0"/>
+                    <Label maxWidth="300" styleClass="hint-text" text="Switches automatically when ready."
+                           textAlignment="CENTER" wrapText="true"/>
+                </VBox>
+                <Region VBox.vgrow="ALWAYS"/>
+                <VBox alignment="CENTER" spacing="8">
+                    <Label maxWidth="300" styleClass="hint-text" text="Need help? Join our Discord."
+                           textAlignment="CENTER" wrapText="true"/>
+                    <Button onAction="#openDiscordInvite" styleClass="ghost-button" text="Join our Discord"/>
+                </VBox>
+            </VBox>
+
+            <!-- ===== NARRATOR (user) ===== -->
+            <VBox fx:id="panelUser" spacing="16" styleClass="tab" visible="false">
+                <padding>
+                    <Insets bottom="20" left="24" right="24" top="20"/>
+                </padding>
+                <StackPane alignment="CENTER_LEFT">
+                    <Label fx:id="windowTitle" styleClass="tab-title-accent" text="Narrator"/>
+                    <Label fx:id="premiumWindowTitle" styleClass="tab-title-premium" text="Narrator" visible="false"/>
+                </StackPane>
+
+                <HBox alignment="CENTER_LEFT" spacing="10" styleClass="row">
+                    <VBox spacing="2" HBox.hgrow="ALWAYS">
+                        <Label styleClass="section-header" text="NARRATOR VOICE"/>
+                        <Label styleClass="section-desc" text="Voice used for text narration." wrapText="true"/>
+                    </VBox>
+                    <ComboBox fx:id="voices" onAction="#selectVoice" onHidden="#hideVoices" onShown="#showVoices"
+                              prefWidth="170" promptText="Matthew, male" styleClass="app-combo">
+                        <items>
+                            <FXCollections fx:factory="observableArrayList">
+                                <String fx:value="Matthew, male"/>
+                                <String fx:value="Justin, male"/>
+                                <String fx:value="Joey, male"/>
+                                <String fx:value="Brian, male"/>
+                                <String fx:value="Joanna, female"/>
+                                <String fx:value="Ivy, female"/>
+                                <String fx:value="Kendra, female"/>
+                                <String fx:value="Kajal, female"/>
+                                <String fx:value="Astra, VALORANT"/>
+                                <String fx:value="Breach, VALORANT"/>
+                                <String fx:value="Brimstone, VALORANT"/>
+                                <String fx:value="Chamber, VALORANT"/>
+                                <String fx:value="Clove, VALORANT"/>
+                                <String fx:value="Cypher, VALORANT"/>
+                                <String fx:value="Deadlock, VALORANT"/>
+                                <String fx:value="Fade, VALORANT"/>
+                                <String fx:value="Gekko, VALORANT"/>
+                                <String fx:value="Harbor, VALORANT"/>
+                                <String fx:value="Jett, VALORANT"/>
+                                <String fx:value="KAYO, VALORANT"/>
+                                <String fx:value="Killjoy, VALORANT"/>
+                                <String fx:value="Neon, VALORANT"/>
+                                <String fx:value="Omen, VALORANT"/>
+                                <String fx:value="Phoenix, VALORANT"/>
+                                <String fx:value="Raze, VALORANT"/>
+                                <String fx:value="Reyna, VALORANT"/>
+                                <String fx:value="Tejo, VALORANT"/>
+                                <String fx:value="Sage, VALORANT"/>
+                                <String fx:value="Skye, VALORANT"/>
+                                <String fx:value="Sova, VALORANT"/>
+                                <String fx:value="Viper, VALORANT"/>
+                                <String fx:value="Veto, VALORANT"/>
+                                <String fx:value="Vyse, VALORANT"/>
+                                <String fx:value="Yoru, VALORANT"/>
+                            </FXCollections>
+                        </items>
+                    </ComboBox>
+                </HBox>
+
+                <VBox spacing="4">
+                    <HBox alignment="CENTER_LEFT">
+                        <Label styleClass="section-header" text="NARRATOR RATE"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="rateValueLabel" styleClass="stat-value" text="100%"/>
+                    </HBox>
+                    <Label styleClass="section-desc" text="Speaking speed for text narration."/>
+                    <Slider fx:id="rateSlider" majorTickUnit="50.0" max="200.0" maxWidth="Infinity" minorTickCount="0"
+                            showTickLabels="false" showTickMarks="false" snapToTicks="false" value="100.0">
+                        <VBox.margin>
+                            <Insets left="2" right="2"/>
+                        </VBox.margin>
+                    </Slider>
+                </VBox>
+
+                <Separator styleClass="soft-sep"/>
+
+                <Label styleClass="section-header" text="TODAY'S STATS"/>
+                <GridPane hgap="10" vgap="10">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="ALWAYS" percentWidth="50"/>
+                        <ColumnConstraints hgrow="ALWAYS" percentWidth="50"/>
+                    </columnConstraints>
+                    <rowConstraints>
+                        <RowConstraints/>
+                        <RowConstraints/>
+                    </rowConstraints>
+                    <VBox styleClass="stat-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                        <Label fx:id="messagesSentLabel" styleClass="stat-card-value" text="0"/>
+                        <Label styleClass="stat-card-label" text="Messages"/>
+                    </VBox>
+                    <VBox styleClass="stat-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                        <Label fx:id="charactersNarratedLabel" styleClass="stat-card-value" text="0"/>
+                        <Label styleClass="stat-card-label" text="Characters"/>
+                    </VBox>
+                    <VBox styleClass="stat-card" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                        <Label fx:id="wordsSentLabel" styleClass="stat-card-value" text="0"/>
+                        <Label styleClass="stat-card-label" text="Words"/>
+                    </VBox>
+                    <VBox styleClass="stat-card" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                        <Label fx:id="avgLengthLabel" styleClass="stat-card-value" text="0"/>
+                        <Label styleClass="stat-card-label" text="Avg. chars"/>
+                    </VBox>
+                </GridPane>
+
+                <Separator styleClass="soft-sep"/>
+
+                <VBox spacing="6">
+                    <HBox alignment="CENTER_LEFT">
+                        <Label styleClass="section-header" text="REMAINING QUOTA" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                    <Label styleClass="section-desc" text="Messages left in today's quota."/>
+                    <ProgressBar fx:id="quotaBar" maxWidth="Infinity" prefHeight="12" progress="1.0"/>
+                </VBox>
+            </VBox>
+
+            <!-- ===== SETTINGS ===== -->
+            <VBox fx:id="panelSettings" styleClass="tab" visible="false">
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="tab-scroll" vbarPolicy="AS_NEEDED"
+                            VBox.vgrow="ALWAYS">
+                    <VBox spacing="13">
+                        <padding>
+                            <Insets bottom="10" left="24" right="20" top="20"/>
+                        </padding>
+                        <Label styleClass="tab-title-accent" text="Settings"/>
+
+                        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="row">
+                            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                                <Label styleClass="section-header" text="NARRATOR SOURCE"/>
+                                <Label styleClass="section-desc" text="Which chats to narrate." wrapText="true"/>
+                            </VBox>
+                            <ComboBox fx:id="sources" onAction="#selectSource" prefWidth="150" promptText="SELF"
+                                      styleClass="app-combo">
+                                <items>
+                                    <FXCollections fx:factory="observableArrayList">
+                                        <String fx:value="SELF"/>
+                                        <String fx:value="TEAM"/>
+                                        <String fx:value="TEAM+ALL"/>
+                                        <String fx:value="SELF+TEAM+ALL"/>
+                                        <String fx:value="PARTY"/>
+                                        <String fx:value="PARTY+ALL"/>
+                                        <String fx:value="SELF+PARTY+ALL"/>
+                                        <String fx:value="PARTY+TEAM"/>
+                                        <String fx:value="PARTY+TEAM+ALL"/>
+                                        <String fx:value="SELF+PARTY+TEAM+ALL"/>
+                                    </FXCollections>
+                                </items>
+                            </ComboBox>
+                        </HBox>
+
+                        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="row">
+                            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                                <Label styleClass="section-header" text="PRIVATE MESSAGES"/>
+                                <Label styleClass="section-desc" text="Allow whispers to be narrated." wrapText="true"/>
+                            </VBox>
+                            <JFXToggleButton fx:id="privateChatButton" onAction="#togglePrivateMessages"
+                                             toggleColor="WHITE"/>
+                        </HBox>
+
+                        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="row">
+                            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                                <Label styleClass="section-header" text="SYSTEM MIC"/>
+                                <Label styleClass="section-desc" text="Stream your default mic alongside the narrator."
+                                       wrapText="true"/>
+                            </VBox>
+                            <JFXToggleButton fx:id="micButton" onAction="#toggleMic" toggleColor="WHITE"/>
+                        </HBox>
+
+                        <VBox spacing="6" styleClass="row">
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                                    <Label styleClass="section-header" text="TEAM PUSH-TO-TALK KEY"/>
+                                    <Label fx:id="keybindText" styleClass="section-desc"
+                                           text="Push-to-talk key for team voice." wrapText="true"/>
+                                </VBox>
+                                <TextField fx:id="keybindTextField" onKeyPressed="#keybindChange"
+                                           onMouseDragEntered="#enterKeybind" onMouseDragExited="#exitKeybind"
+                                           onMouseEntered="#enterKeybind" onMouseExited="#exitKeybind" prefWidth="120"
+                                           promptText="Press a key" styleClass="key-field"/>
+                            </HBox>
+                        </VBox>
+
+                        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="row">
+                            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                                <Label styleClass="section-header" text="AUTO TEAM KEY"/>
+                                <Label styleClass="section-desc" text="Hold the team key automatically while narrating."
+                                       wrapText="true"/>
+                            </VBox>
+                            <JFXToggleButton fx:id="teamChatButton" onAction="#toggleTeamChat" selected="true"
+                                             toggleColor="WHITE"/>
+                        </HBox>
+
+                        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="row">
+                            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                                <Label styleClass="section-header" text="SYNC VOICE SETTINGS"/>
+                                <Label styleClass="section-desc" text="Sync settings to Valorant on start-up."
+                                       wrapText="true"/>
+                            </VBox>
+                            <JFXToggleButton fx:id="valorantSettings" onAction="#syncValorantSettingsToggle"
+                                             selected="true" toggleColor="WHITE"/>
+                        </HBox>
+
+                        <VBox spacing="6" styleClass="row">
+                            <Label styleClass="section-header" text="IGNORE PLAYER MESSAGES"/>
+                            <Label styleClass="section-desc" text="Type to ignore, or select an entry to toggle."/>
+                            <ComboBox fx:id="playerDropdown" editable="true" maxWidth="Infinity"
+                                      onAction="#handlePlayerAction" promptText="Type to ignore / select to toggle"
+                                      styleClass="app-combo">
+                                <items>
+                                    <FXCollections fx:factory="observableArrayList"/>
+                                </items>
+                            </ComboBox>
+                        </VBox>
+
+                    </VBox>
+                </ScrollPane>
+                <HBox spacing="10" styleClass="settings-actions">
+                    <padding>
+                        <Insets bottom="16" left="24" right="20" top="12"/>
+                    </padding>
+                    <Button fx:id="voiceSettingsSync" maxWidth="Infinity" onAction="#syncValorantSettings"
+                            styleClass="ghost-button" text="Sync to Valorant" HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="fullFormsButton" maxWidth="Infinity" onAction="#openFullFormsManager"
+                            styleClass="primary-button" text="Full-forms" HBox.hgrow="ALWAYS"/>
+                </HBox>
+            </VBox>
+
+            <!-- ===== ACCOUNT (info) ===== -->
+            <VBox fx:id="panelInfo" alignment="TOP_CENTER" spacing="14" styleClass="tab" visible="false">
+                <padding>
+                    <Insets bottom="20" left="24" right="24" top="22"/>
+                </padding>
+                <ImageView fitHeight="84" fitWidth="84" pickOnBounds="true" preserveRatio="true">
+                    <Image url="@userBIG.png"/>
+                </ImageView>
+                <Label styleClass="tab-title-accent" text="Account"/>
+                <Label fx:id="premiumBadge" styleClass="free-badge" text="FREE"/>
+
+                <GridPane hgap="12" maxWidth="320" vgap="14">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="90"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+                    <Label styleClass="stat-key" text="User ID" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                    <TextField fx:id="userIDLabel" editable="false" styleClass="copyable-text-field"
+                               stylesheets="@styles.css" text="N/A" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                    <Label styleClass="stat-key" text="Quota left" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                    <Label fx:id="quotaLabel" styleClass="stat-value-left" text="999/999" GridPane.columnIndex="1"
+                           GridPane.rowIndex="1"/>
+                    <Label styleClass="stat-key" text="Premium" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                    <Label fx:id="premiumDateLabel" styleClass="stat-value-left" text="Valid till DD-MM-YYYY HH:MM"
+                           wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                    <rowConstraints>
+                        <RowConstraints/>
+                        <RowConstraints/>
+                        <RowConstraints/>
+                    </rowConstraints>
+                </GridPane>
+
+                <Button fx:id="subscribeButton" maxWidth="320" onAction="#browseSubscription"
+                        styleClass="premium-button" text="View subscription info"/>
+                <Region VBox.vgrow="ALWAYS"/>
+                <Label maxWidth="300" styleClass="hint-text" text="Need help? Join our Discord." textAlignment="CENTER"
+                       wrapText="true"/>
+                <Button onAction="#openDiscordInvite" styleClass="ghost-button" text="Join our Discord"/>
+            </VBox>
+
+            <!-- ===== PAUSED OVERLAY (narration disabled) ===== -->
+            <VBox fx:id="disabledOverlay" alignment="CENTER" pickOnBounds="true" spacing="12"
+                  styleClass="paused-overlay" visible="false">
+                <Label styleClass="paused-title" text="Narration paused"/>
+                <Label maxWidth="240" styleClass="paused-desc" text="Press the power button to resume narrating."
+                       textAlignment="CENTER" wrapText="true"/>
+            </VBox>
+
+        </StackPane>
+    </VBox>
+</StackPane>

@@ -71,7 +71,7 @@ public class ValNarratorApplication extends Application {
                 alert.setContentText(contentText);
                 alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
 
-                alert.show(); // runs on FX thread — safe
+                alert.show(); // runs on FX thread - safe
 
                 future.complete(alert);
             } catch (Exception e) {
@@ -119,57 +119,66 @@ public class ValNarratorApplication extends Application {
 
     public static boolean showConfirmationAlertAndWait(String headerText, String contentText) {
         FXInit.init();
+        // If we are already on the FX thread, show directly - blocking on a latch here
+        // would deadlock (the runLater could never execute). showAndWait spins its own
+        // nested event loop, so it is safe on the FX thread.
+        if (Platform.isFxApplicationThread()) {
+            return doConfirm(headerText, contentText);
+        }
+
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicBoolean userChoice = new AtomicBoolean(false);
-
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Valorant Narrator");
-            alert.setHeaderText(headerText);
-            alert.setContentText(contentText);
-
-            ButtonType yesButton = new ButtonType("Yes");
-            ButtonType noButton = new ButtonType("No");
-            alert.getButtonTypes().setAll(yesButton, noButton);
-
-            Optional<ButtonType> result = alert.showAndWait();
-            userChoice.set(result.isPresent() && result.get() == yesButton);
-
+            userChoice.set(doConfirm(headerText, contentText));
             latch.countDown();
         });
-
         try {
             latch.await();
         } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
         }
-
         return userChoice.get();
+    }
+
+    private static boolean doConfirm(String headerText, String contentText) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Valorant Narrator");
+        alert.setHeaderText(headerText);
+        alert.setContentText(contentText);
+        ButtonType yesButton = new ButtonType("Yes");
+        ButtonType noButton = new ButtonType("No");
+        alert.getButtonTypes().setAll(yesButton, noButton);
+        Optional<ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == yesButton;
     }
 
     public static String showInputDialogAndWait(String headerText, String contentText) {
         FXInit.init();
+        if (Platform.isFxApplicationThread()) {
+            return doInput(headerText, contentText);
+        }
+
         final CountDownLatch latch = new CountDownLatch(1);
         final StringBuilder userInput = new StringBuilder();
-
         Platform.runLater(() -> {
-            javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog();
-            dialog.setTitle("Valorant Narrator");
-            dialog.setHeaderText(headerText);
-            dialog.setContentText(contentText);
-
-            Optional<String> result = dialog.showAndWait();
-            result.ifPresent(userInput::append);
-
+            String result = doInput(headerText, contentText);
+            if (result != null) userInput.append(result);
             latch.countDown();
         });
-
         try {
             latch.await();
         } catch (InterruptedException ignored) {
-            logger.error("Interrupted while waiting for user input dialog.", ignored);
+            Thread.currentThread().interrupt();
         }
+        return userInput.isEmpty() ? null : userInput.toString();
+    }
 
-        return !userInput.isEmpty() ? userInput.toString() : null;
+    private static String doInput(String headerText, String contentText) {
+        javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog();
+        dialog.setTitle("Valorant Narrator");
+        dialog.setHeaderText(headerText);
+        dialog.setContentText(contentText);
+        return dialog.showAndWait().orElse(null);
     }
 
     @Override
@@ -189,11 +198,17 @@ public class ValNarratorApplication extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(ValNarratorApplication.class.getResource("mainApplication.fxml"));
         stage.initStyle(StageStyle.TRANSPARENT);
         stage.setTitle("Valorant Narrator");
+        try (InputStream iconStream = ValNarratorApplication.class.getResourceAsStream("appIcon.png")) {
+            if (iconStream != null) stage.getIcons().add(new javafx.scene.image.Image(iconStream));
+        } catch (IOException ignored) {
+        }
         createTrayIcon(stage);
         firstTime = true;
         Platform.setImplicitExit(false);
         Scene scene = new Scene(fxmlLoader.load());
         scene.setFill(Color.TRANSPARENT);
+        var appCss = ValNarratorApplication.class.getResource("app.css");
+        if (appCss != null) scene.getStylesheets().add(appCss.toExternalForm());
         stage.setScene(scene);
         stage.setResizable(false);
         stage.show();

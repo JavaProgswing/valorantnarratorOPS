@@ -11,7 +11,6 @@ import com.jprcoder.valnarratorgui.ValNarratorApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.*;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.net.URI;
@@ -147,7 +146,7 @@ public class APIHandler {
         FileOutputStream fos;
         byte[] fileData;
         try {
-            url = new URL(valAPIUrl + "/installer/version/latest");
+            url = URI.create(valAPIUrl + "/installer/version/latest").toURL();
             while (con == null) {
                 try {
                     con = url.openConnection();
@@ -172,11 +171,11 @@ public class APIHandler {
             fos.write(fileData);
             fos.close();
         } catch (Exception m) {
-            m.printStackTrace();
+            logger.error("Failed to download the latest installer: {}", m.getMessage());
         }
 
         logger.debug("Starting installer from {}", installerLocation);
-        Runtime.getRuntime().exec(String.format("cmd.exe /K \"cd %s && %s /silent\"", installerLocation, installerName));
+        ProcessUtil.runDetached("cmd.exe", "/K", String.format("cd %s && %s /silent", installerLocation, installerName));
     }
 
     public static boolean verifyReferralUser(String userId) {
@@ -224,6 +223,13 @@ public class APIHandler {
     }
 
 
+    /**
+     * Requests speech audio from AWS Polly, building an SSML prosody document for the
+     * given rate and signing the request with AWS Signature V4.
+     *
+     * @return the HTTP response paired with the MP3 audio input stream.
+     * @throws QuotaExhaustedException if the account's narration quota is depleted.
+     */
     public AbstractMap.Entry<HttpResponse<InputStream>, InputStream> speakVoice(String text, short rate, String currentVoice, VoiceEngineType engineType, String accessKeyID, String secretKey, String sessionToken) throws QuotaExhaustedException {
         String requestBody = String.format("{\"Engine\":\"%s\",\"OutputFormat\":\"mp3\",\"Text\":\"<speak><prosody rate='%d%%'>%s</prosody></speak>\",\"VoiceId\":\"%s\",\"TextType\":\"ssml\"}", engineType.toValue(), rate, text, currentVoice);
         TreeMap<String, String> preheaders = new TreeMap<>();
@@ -235,7 +241,7 @@ public class APIHandler {
         preheaders.put("x-amz-security-token", sessionToken);
         preheaders.put("host", "polly.ap-south-1.amazonaws.com");
         preheaders.put("content-type", "application/json");
-        AWSSignatureV4Generator gen = new AWSSignatureV4Generator.Builder(accessKeyID, secretKey).payload(requestBody).serviceName("polly").httpMethodName("POST").regionName("ap-south-1").canonicalURI("/v1/speech").queryParameters(new TreeMap<>()).awsHeaders((TreeMap<String, String>) preheaders.clone()).build();
+        AWSSignatureV4Generator gen = new AWSSignatureV4Generator.Builder(accessKeyID, secretKey).payload(requestBody).serviceName("polly").httpMethodName("POST").regionName("ap-south-1").canonicalURI("/v1/speech").queryParameters(new TreeMap<>()).awsHeaders(new TreeMap<>(preheaders)).build();
         try {
             Map<String, String> headers = gen.getHeaders();
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder().uri(URI.create("https://polly.ap-south-1.amazonaws.com/v1/speech")).POST(HttpRequest.BodyPublishers.ofString(requestBody));
@@ -256,12 +262,11 @@ public class APIHandler {
                 final String id1 = System.getProperty("aws.accessKeyId"), key1 = System.getProperty("aws.secretKey"), sessionToken1 = System.getProperty("aws.sessionToken");
                 return speakVoice(text, rate, currentVoice, engineType, id1, key1, sessionToken1);
             }
-            logger.debug(String.valueOf(response.headers()));
             return new AbstractMap.SimpleEntry<>(response, response.body());
         } catch (NoSuchAlgorithmException | InvalidKeyException | IOException e) {
             throw new RuntimeException(e);
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.WARNING_MESSAGE);
             throw new RuntimeException(e);
         }
     }
@@ -312,7 +317,7 @@ public class APIHandler {
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
         logger.debug(String.valueOf(responseBody));
-        logger.debug(String.valueOf(response.headers()));
+        // Response headers carry AWS credentials - never log them.
         if (response.statusCode() == 301) {
             ValNarratorApplication.showAlertAndWait("Unsupported Version!", "Please update your app, you're on a unsupported version.");
             System.exit(-1);
@@ -350,6 +355,9 @@ public class APIHandler {
         return "ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9";
     }
 
+    /**
+     * Resolves Riot PUUIDs to game names and taglines via the name-service endpoint.
+     */
     public ArrayList<PlayerAccount> getPlayerNames(final String accessToken, final RiotClientDetails riotClientDetails, final String entitlementToken, final ArrayList<String> playerIDs) {
         final Gson gson = new Gson();
         HttpRequest playerReq = HttpRequest.newBuilder().uri(URI.create(String.format("https://pd.%s.a.pvp.net/name-service/v2/players", riotClientDetails.subject_deployment()))).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-Entitlements-JWT", entitlementToken).header("X-Riot-ClientVersion", riotClientDetails.version()).PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(playerIDs))).build();
@@ -417,6 +425,7 @@ public class APIHandler {
         isPremium = premium;
     }
 
+    /** Fetches the player's zlib + base64 encoded Valorant settings blob from the cloud. */
     public String getEncodedPlayerSettings(final String accessToken, final String version) {
         HttpRequest settingsReq = HttpRequest.newBuilder().uri(URI.create("https://player-preferences-usw2.pp.sgp.pvp.net/playerPref/v3/getPreference/Ares.PlayerSettings")).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-ClientVersion", version).build();
         HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), settingsReq, HttpResponse.BodyHandlers.ofString());
@@ -427,6 +436,7 @@ public class APIHandler {
         return new Gson().fromJson(encodedPlayerSettings, JsonObject.class).get("data").getAsString();
     }
 
+    /** Uploads a zlib + base64 encoded Valorant settings blob to the cloud. */
     public void setEncodedPlayerSettings(final String accessToken, final String version, final String encodedSettings) {
         final SettingsData settingsData = new SettingsData(encodedSettings, "Ares.PlayerSettings");
         final String jsonString = new Gson().toJson(settingsData);

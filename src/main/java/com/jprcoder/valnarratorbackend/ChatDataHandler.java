@@ -7,14 +7,12 @@ import javafx.application.Platform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.*;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CompletableFuture;
 
 import static com.jprcoder.valnarratorbackend.ChatUtilityHandler.expandShortForms;
-import static com.jprcoder.valnarratorbackend.ChatUtilityHandler.getPlayerName;
 
 public class ChatDataHandler {
     private static final Logger logger = LoggerFactory.getLogger(ChatDataHandler.class);
@@ -37,7 +35,7 @@ public class ChatDataHandler {
         try {
             properties = new Chat(APIHandler.getQuotaLimit());
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.WARNING_MESSAGE);
             throw new RuntimeException(e);
         }
         try {
@@ -65,43 +63,56 @@ public class ChatDataHandler {
         try {
             mq = APIHandler.getRequestQuota();
         } catch (OutdatedVersioningException e) {
-            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+            ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.WARNING_MESSAGE);
             throw new RuntimeException(e);
         }
         ValNarratorController.getLatestInstance().updateRequestQuota(mq);
         APIHandler.setPremium(mq.isPremium());
     }
 
+    /**
+     * Applies the active narration filters - globally disabled, ignored players, the
+     * per-source toggles (whisper / party / team / all) and the self/all rules - to an
+     * incoming message. If it passes, the message is narrated asynchronously, message
+     * stats are updated, and the sender's display name is learned for the dropdown.
+     */
     public void message(Message message) {
         if (properties.isDisabled()) {
-            logger.info("Valorant Narrator disabled, ignoring message!");
+            logger.debug("Valorant Narrator disabled, ignoring message!");
             return;
         }
         if (properties.isIgnoredPlayerID(message.getUserId())) {
-            logger.info("Ignoring message from {}!", properties.getPlayerIDTable().get(message.getUserId()));
+            logger.debug("Ignoring message from {}!", properties.getPlayerIDTable().get(message.getUserId()));
+            return;
+        }
+
+        // The self/own-message toggle dictates: when it is off, never narrate the
+        // local player's own messages, regardless of channel.
+        if (message.isOwnMessage() && !properties.isSelfState()) {
+            logger.debug("Self messages disabled, ignoring own message!");
             return;
         }
 
         if (message.getMessageType() == MessageType.WHISPER && !properties.isPrivateState()) {
-            logger.info("Private messages disabled, ignoring message!");
+            logger.debug("Private messages disabled, ignoring message!");
             return;
         }
         if (message.isOwnMessage() && properties.isSelfState()) {
             // Self messages enabled, skipping filtering checks.
         } else if (message.getMessageType() == MessageType.PARTY && !properties.isPartyState()) {
-            logger.info("Party messages disabled, ignoring message!");
+            logger.debug("Party messages disabled, ignoring message!");
             return;
         } else if (message.getMessageType() == MessageType.TEAM && !properties.isTeamState()) {
-            logger.info("Team messages disabled, ignoring message!");
+            logger.debug("Team messages disabled, ignoring message!");
             return;
         }
 
         if (message.getMessageType() == MessageType.ALL) {
             if (!properties.isAllState()) {
-                logger.info("All messages disabled, ignoring message!");
+                logger.debug("All messages disabled, ignoring message!");
                 return;
             } else if (message.isOwnMessage() && !properties.isSelfState()) {
-                logger.info("(ALL)Self messages disabled, ignoring message!");
+                logger.debug("(ALL)Self messages disabled, ignoring message!");
                 return;
             }
         }
@@ -115,20 +126,23 @@ public class ChatDataHandler {
                 logger.warn("Quota exhausted, {}", e.getMessage());
                 ValNarratorController.getLatestInstance().markQuotaExhausted();
             } catch (OutdatedVersioningException e) {
-                ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.WARNING_MESSAGE);
                 throw new RuntimeException(e);
             }
         });
         properties.updateMessageStats(message);
         Platform.runLater(() -> {
-            ValNarratorController.getLatestInstance().setMessagesSent(properties.getMessagesSent());
-            ValNarratorController.getLatestInstance().setCharactersNarrated(properties.getCharactersSent());
+            ValNarratorController controller = ValNarratorController.getLatestInstance();
+            controller.setMessagesSent(properties.getMessagesSent());
+            controller.setCharactersNarrated(properties.getCharactersSent());
+            controller.setWordsNarrated(properties.getWordsSent());
+            controller.setAverageLength(properties.getAverageMessageLength());
         });
 
         if (!properties.getPlayerIDTable().containsKey(message.getUserId())) {
-            final String playerID = message.getUserId(), playerName = getPlayerName(playerID).trim();
-            properties.getPlayerIDTable().put(playerID, playerName);
-            properties.getPlayerNameTable().put(playerName, playerID);
+            final String playerName = message.getUserId().trim();
+            properties.getPlayerIDTable().put(playerName, playerName);
+            properties.getPlayerNameTable().put(playerName, playerName);
             Platform.runLater(() -> ValNarratorController.getLatestInstance().playerDropdown.getItems().addAll(playerName));
         }
     }

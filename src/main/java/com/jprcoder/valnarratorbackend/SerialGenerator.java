@@ -27,17 +27,18 @@ public class SerialGenerator {
                 os.close();
             } catch (IOException ignored) {
             }
-            Scanner sc = new Scanner(is);
-            sc.nextLine();
-            while (sc.hasNext()) {
-                String serial = sc.nextLine().trim().replace("\n", "");
-                if (serial.isEmpty()) continue;
-                MBoardSerial.add(serial);
+            try (Scanner sc = new Scanner(is)) {
+                sc.nextLine();
+                while (sc.hasNext()) {
+                    String serial = sc.nextLine().trim().replace("\n", "");
+                    if (serial.isEmpty())
+                        continue;
+                    MBoardSerial.add(serial);
+                }
             }
         }
         return MBoardSerial;
     }
-
 
     private static String getDiskSerial() throws IOException {
         Runtime runtime = Runtime.getRuntime();
@@ -56,17 +57,18 @@ public class SerialGenerator {
                 os.close();
             } catch (IOException ignored) {
             }
-            Scanner sc = new Scanner(is);
-            sc.nextLine();
-            while (sc.hasNext()) {
-                String serial = sc.nextLine().trim().replace("\n", "");
-                if (serial.isEmpty()) continue;
-                return serial;
+            try (Scanner sc = new Scanner(is)) {
+                sc.nextLine();
+                while (sc.hasNext()) {
+                    String serial = sc.nextLine().trim().replace("\n", "");
+                    if (serial.isEmpty())
+                        continue;
+                    return serial;
+                }
             }
         }
         return null;
     }
-
 
     private static ArrayList<String> getGPUSerial() throws IOException {
         ArrayList<String> gpuSerial = new ArrayList<>();
@@ -86,17 +88,18 @@ public class SerialGenerator {
                 os.close();
             } catch (IOException ignored) {
             }
-            Scanner sc = new Scanner(is);
-            sc.nextLine();
-            while (sc.hasNext()) {
-                String serial = sc.nextLine().trim().replace("\n", "");
-                if (serial.isEmpty()) continue;
-                gpuSerial.add(serial.substring(serial.indexOf('\\') + 1));
+            try (Scanner sc = new Scanner(is)) {
+                sc.nextLine();
+                while (sc.hasNext()) {
+                    String serial = sc.nextLine().trim().replace("\n", "");
+                    if (serial.isEmpty())
+                        continue;
+                    gpuSerial.add(serial.substring(serial.indexOf('\\') + 1));
+                }
             }
         }
         return gpuSerial;
     }
-
 
     private static String getCPUSerial() throws IOException {
         String cpuSerial = null;
@@ -110,16 +113,17 @@ public class SerialGenerator {
         InputStream is = process.getInputStream();
 
         try (is) {
-            Scanner sc = new Scanner(is);
-            while (sc.hasNext()) {
-                try {
-                    String next = sc.next();
-                    if ("ProcessorId".equals(next)) {
-                        cpuSerial = sc.next().trim();
-                        break;
+            try (Scanner sc = new Scanner(is)) {
+                while (sc.hasNext()) {
+                    try {
+                        String next = sc.next();
+                        if ("ProcessorId".equals(next)) {
+                            cpuSerial = sc.next().trim();
+                            break;
+                        }
+                    } catch (java.util.NoSuchElementException e) {
+                        return null;
                     }
-                } catch (java.util.NoSuchElementException e) {
-                    return null;
                 }
             }
         }

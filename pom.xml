@@ -6,16 +6,14 @@
 
     <groupId>com.jprcoder</groupId>
     <artifactId>ValorantNarrator</artifactId>
-    <version>4.07</version>
+    <version>4.10</version>
     <name>ValorantNarrator</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.9.2</junit.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
         <java.version>17</java.version>
-        <javafx.version>17.0.1</javafx.version>
+        <javafx.version>17.0.12</javafx.version>
     </properties>
     <dependencies>
         <dependency>
@@ -31,12 +29,12 @@
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>17.0.1</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>17.0.1</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>com.jfoenix</groupId>
@@ -267,8 +265,10 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
+                    <release>${java.version}</release>
+                    <compilerArgs>
+                        <arg>-Xlint:all,-options,-path,-processing,-serial</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -276,6 +276,7 @@
                 <artifactId>maven-resources-plugin</artifactId>
                 <version>3.3.1</version>
                 <configuration>
+                    <propertiesEncoding>UTF-8</propertiesEncoding>
                     <nonFilteredFileExtensions>
                         <nonFilteredFileExtension>mp3</nonFilteredFileExtension>
                         <nonFilteredFileExtension>png</nonFilteredFileExtension>
@@ -285,4 +286,27 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Dev-only UI preview: renders the main window + Full-forms editor with no
+            Riot client / Valorant / audio startup, snapshotting each panel to
+            target/preview/*.png.  Run:  mvnw -o javafx:run -Ppreview
+        -->
+        <profile>
+            <id>preview</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.openjfx</groupId>
+                        <artifactId>javafx-maven-plugin</artifactId>
+                        <version>0.0.8</version>
+                        <configuration>
+                            <mainClass>com.jprcoder.valnarratorgui.PreviewLauncher</mainClass>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

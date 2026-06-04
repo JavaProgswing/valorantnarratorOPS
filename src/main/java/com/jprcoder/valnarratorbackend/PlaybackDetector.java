@@ -17,7 +17,7 @@ class PlaybackDetector {
     // 16-bit = 2 bytes
     // Debounce
     private static final int DEBOUNCE_MS = 20;
-    private final float[] rollingDb = new float[5];      // min 10 samples
+    private final float[] rollingDb = new float[5]; // min 10 samples
     private final TargetDataLine line;
     private int rollPtr = 0;
     // Learned thresholds
@@ -39,9 +39,9 @@ class PlaybackDetector {
         this.line.start();
         Arrays.fill(rollingDb, -90);
 
-        logger.info(String.format("BaselineDb: %f", baselineDb));
-        logger.info(String.format("NoisePeakDb: %f", noisePeakDb));
-        logger.info(String.format("Auto Threshold: %f dB", detectThresholdDb));
+        logger.debug(String.format("BaselineDb: %f", baselineDb));
+        logger.debug(String.format("NoisePeakDb: %f", noisePeakDb));
+        logger.debug(String.format("Auto Threshold: %f dB", detectThresholdDb));
     }
 
     private static double calcRMS(byte[] audio) {
@@ -57,7 +57,8 @@ class PlaybackDetector {
     }
 
     private static double rmsToDb(double rms) {
-        if (rms <= 0) return -90;
+        if (rms <= 0)
+            return -90;
         return 20.0 * Math.log10(rms);
     }
 
@@ -85,7 +86,7 @@ class PlaybackDetector {
     public void calibrateBaseline() {
         logger.debug("Calibrating (silent)...");
 
-        long end = System.currentTimeMillis() + 1000;  // 1 sec silence sampling
+        long end = System.currentTimeMillis() + 1000; // 1 sec silence sampling
 
         float min = 0, max = -90;
         boolean first = true;
@@ -102,11 +103,11 @@ class PlaybackDetector {
 
         this.baselineDb = min;
         this.noisePeakDb = max;
-        this.detectThresholdDb = max + 4;  // noise peak + margin
+        this.detectThresholdDb = max + 4; // noise peak + margin
 
-        logger.info(String.format("BaselineDb: %f", baselineDb));
-        logger.info(String.format("NoisePeakDb: %f", noisePeakDb));
-        logger.info(String.format("Auto Threshold: %f dB", detectThresholdDb));
+        logger.debug(String.format("BaselineDb: %f", baselineDb));
+        logger.debug(String.format("NoisePeakDb: %f", noisePeakDb));
+        logger.debug(String.format("Auto Threshold: %f dB", detectThresholdDb));
     }
 
     /**
@@ -116,14 +117,16 @@ class PlaybackDetector {
         byte[] buf = new byte[256];
         int n = line.read(buf, 0, buf.length);
 
-        if (n <= 0) return -90;
+        if (n <= 0)
+            return -90;
 
         double rms = calcRMS(buf);
         float db = (float) rmsToDb(rms);
 
         // Rolling avg insert
         rollingDb[rollPtr++] = db;
-        if (rollPtr >= rollingDb.length) rollPtr = 0;
+        if (rollPtr >= rollingDb.length)
+            rollPtr = 0;
 
         return db;
     }
@@ -133,12 +136,13 @@ class PlaybackDetector {
      */
     public float getSmoothedDb() {
         float sum = 0;
-        for (float d : rollingDb) sum += d;
+        for (float d : rollingDb)
+            sum += d;
         return sum / rollingDb.length;
     }
 
     /**
-     * POLLING API — best for manual checks
+     * POLLING API - best for manual checks
      */
     public boolean isPlaying() {
         updateStateMachine();
@@ -151,7 +155,7 @@ class PlaybackDetector {
      * Must be polled or run inside a worker thread
      */
     private void updateStateMachine() {
-        float db = readOnce();
+        readOnce();
         float smooth = getSmoothedDb();
 
         long now = System.currentTimeMillis();
@@ -160,22 +164,26 @@ class PlaybackDetector {
 
         if (state == PlaybackDetector.State.IDLE) {
             if (above) {
-                if (aboveThresholdSince == 0) aboveThresholdSince = now;
+                if (aboveThresholdSince == 0)
+                    aboveThresholdSince = now;
 
                 if (now - aboveThresholdSince >= DEBOUNCE_MS) {
                     state = PlaybackDetector.State.PLAYING;
-                    if (listener != null) listener.onAudioStart();
+                    if (listener != null)
+                        listener.onAudioStart();
                 }
             } else {
                 aboveThresholdSince = 0;
             }
         } else if (state == PlaybackDetector.State.PLAYING) {
             if (!above) {
-                if (belowThresholdSince == 0) belowThresholdSince = now;
+                if (belowThresholdSince == 0)
+                    belowThresholdSince = now;
 
                 if (now - belowThresholdSince >= DEBOUNCE_MS) {
                     state = PlaybackDetector.State.IDLE;
-                    if (listener != null) listener.onAudioStop();
+                    if (listener != null)
+                        listener.onAudioStop();
                 }
             } else {
                 belowThresholdSince = 0;
@@ -201,7 +209,9 @@ class PlaybackDetector {
     }
 
     // FSM States
-    public enum State {IDLE, PLAYING}
+    public enum State {
+        IDLE, PLAYING
+    }
 
     // Listener callback
     public interface Listener {

@@ -5,7 +5,6 @@ import com.jprcoder.valnarratorgui.ValNarratorController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.*;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
@@ -40,7 +39,7 @@ public class VoiceTokenHandler {
                     }
                     continue;
                 } catch (OutdatedVersioningException e) {
-                    ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.fromInt(JOptionPane.WARNING_MESSAGE));
+                    ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.WARNING_MESSAGE);
                     throw new RuntimeException(e);
                 }
                 LAST_REFRESH_MS = System.currentTimeMillis();

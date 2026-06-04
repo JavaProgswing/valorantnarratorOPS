@@ -33,8 +33,8 @@ public class VoiceGenerator {
     private static final Logger logger = LoggerFactory.getLogger(VoiceGenerator.class);
     private static final VoiceGenerator singleton;
     private static final String CONFIG_FILE = "config.json";
+    private static final int CONFIG_VERSION = 2;
     private static final int defaultKeyEvent = KeyEvent.VK_V;
-    private static final GsonBuilder builder;
     private static final ArrayList<String> normalVoices, neuralVoices;
     private static final List<String> inbuiltVoices;
     private static final InbuiltVoiceSynthesizer synthesizer = new InbuiltVoiceSynthesizer();
@@ -63,8 +63,6 @@ public class VoiceGenerator {
         neuralVoices = new ArrayList<>();
         neuralVoices.add("Kajal");
         inbuiltVoices = synthesizer.getAvailableVoices();
-        builder = new GsonBuilder();
-        builder.setPrettyPrinting();
     }
 
     private final Robot robot = new Robot();
@@ -76,8 +74,10 @@ public class VoiceGenerator {
         keybindChange(keyEvent);
 
         Platform.runLater(() -> ValNarratorController.getLatestInstance().teamChatButton.setSelected(isTeamKeyEnabled));
-        Platform.runLater(() -> ValNarratorController.getLatestInstance().valorantSettings.setSelected(syncValorantSettingsToggle));
-        Platform.runLater(() -> ValNarratorController.getLatestInstance().sources.getSelectionModel().select(Source.toString(currentSource)));
+        Platform.runLater(() -> ValNarratorController.getLatestInstance().valorantSettings
+                .setSelected(syncValorantSettingsToggle));
+        Platform.runLater(() -> ValNarratorController.getLatestInstance().sources.getSelectionModel()
+                .select(Source.toString(currentSource)));
         Platform.runLater(() -> {
             ValNarratorController.getLatestInstance().micButton.setSelected(isSystemMicStreamed);
             ValNarratorController.getLatestInstance().toggleMic();
@@ -87,33 +87,21 @@ public class VoiceGenerator {
             ValNarratorController.getLatestInstance().togglePrivateMessages();
         });
 
-        try {
-            String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-            long pid = ProcessHandle.current().pid();
-            String command = fileLocation + " /SetAppDefault \"CABLE Input\" all " + pid;
-            long start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Successfully set the app's output to VB-Audio CABLE Input.", (System.currentTimeMillis() - start)));
-            command = fileLocation + " /SetPlaybackThroughDevice \"CABLE Output\" \"Default Playback Device\"";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Added a listen-in into the VB-Audio CABLE Output to default playback device.", (System.currentTimeMillis() - start)));
-            command = fileLocation + " /SetListenToThisDevice \"CABLE Output\" 1";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Successfully set the listen-in to true on VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
-            command = fileLocation + " /unmute \"CABLE Output\"";
-            start = System.currentTimeMillis();
-            Runtime.getRuntime().exec(command);
-            logger.debug(String.format("(%d ms)Successfully unmuted the VB-Audio CABLE Output.", (System.currentTimeMillis() - start)));
-        } catch (IOException e) {
-            logger.error(String.format("SoundVolumeView.exe generated an error: %s", e));
-            e.printStackTrace();
-        }
+        String soundVolumeView = String.format("%s/ValorantNarrator/SoundVolumeView.exe",
+                System.getenv("ProgramFiles").replace("\\", "/"));
+        long pid = ProcessHandle.current().pid();
+        ProcessUtil.runDetached(soundVolumeView, "/SetAppDefault", "CABLE Input", "all", String.valueOf(pid));
+        ProcessUtil.runDetached(soundVolumeView, "/SetPlaybackThroughDevice", "CABLE Output",
+                "Default Playback Device");
+        ProcessUtil.runDetached(soundVolumeView, "/SetListenToThisDevice", "CABLE Output", "1");
+        ProcessUtil.runDetached(soundVolumeView, "/unmute", "CABLE Output");
+        logger.debug("Configured VB-Audio CABLE routing.");
+
         LockFileHandler lockFileHandler = new LockFileHandler();
         entitlement = ChatDataHandler.getInstance().getAPIHandler().getEntitlement(lockFileHandler);
         accessToken = entitlement.accessToken();
-        CompletableFuture.runAsync(() -> riotClientDetails = ChatDataHandler.getInstance().getAPIHandler().getRiotClientDetails(lockFileHandler));
+        CompletableFuture.runAsync(() -> riotClientDetails = ChatDataHandler.getInstance().getAPIHandler()
+                .getRiotClientDetails(lockFileHandler));
     }
 
     public static void initializeAgentSynthesizer() {
@@ -137,12 +125,12 @@ public class VoiceGenerator {
     }
 
     public static void generateSingleton() {
+        // Initializes the static block
     }
 
     public static List<String> getInbuiltVoices() {
         return inbuiltVoices;
     }
-
 
     public static String getCurrentVoice() {
         return currentVoice;
@@ -167,13 +155,14 @@ public class VoiceGenerator {
         } else {
             if (ChatDataHandler.getInstance().getProperties().isQuotaExhausted() && voiceType == VoiceType.STANDARD) {
                 ValNarratorController.getLatestInstance().revertVoiceSelection();
-                showAlert("Quota Exhausted", "Your quota has been exhausted, please wait for the next refresh to continue using this voice!");
+                showAlert("Quota Exhausted",
+                        "Your quota has been exhausted, please wait for the next refresh to continue using this voice!");
                 return false;
             }
         }
         currentVoice = filterVoiceName(voice);
         currentVoiceType = voiceType;
-        logger.info(String.format("(%s)Set voice to: %s", currentVoiceType, currentVoice));
+        logger.debug(String.format("(%s)Set voice to: %s", currentVoiceType, currentVoice));
         return true;
     }
 
@@ -195,12 +184,20 @@ public class VoiceGenerator {
         return actionKey;
     }
 
-    private String getSettingsEventName(int keyEvent) {
-        return KeyEvent.getKeyText(keyEvent);
+    private String getSettingsEventName(int code) {
+        return KeyEvent.getKeyText(code);
     }
 
+    /**
+     * Pushes the app's team push-to-talk keybind into Valorant's cloud settings and
+     * points Valorant's voice-capture device at the VB-Audio CABLE output, so
+     * generated
+     * narration is transmitted on the team voice channel. Rewrites the local
+     * {@code RiotUserSettings.ini} and re-uploads the encoded settings blob.
+     */
     public void syncValorantPlayerSettings() throws IOException, DataFormatException, InterruptedException {
-        final String encodedSettings = ChatDataHandler.getInstance().getAPIHandler().getEncodedPlayerSettings(accessToken, riotClientDetails.version());
+        final String encodedSettings = ChatDataHandler.getInstance().getAPIHandler()
+                .getEncodedPlayerSettings(accessToken, riotClientDetails.version());
         final String decodedSettingsJson = decodeBase64AndInflate(encodedSettings);
         final JsonObject settingsJson = JsonParser.parseString(decodedSettingsJson).getAsJsonObject();
         JsonArray actionMappings = settingsJson.getAsJsonArray("actionMappings");
@@ -239,28 +236,39 @@ public class VoiceGenerator {
             }
         }
         logger.debug(String.valueOf(settingsJson));
-        ChatDataHandler.getInstance().getAPIHandler().setEncodedPlayerSettings(accessToken, riotClientDetails.version(), ZlibCompression.deflateAndBase64Encode(settingsJson.toString()));
+        ChatDataHandler.getInstance().getAPIHandler().setEncodedPlayerSettings(accessToken, riotClientDetails.version(),
+                ZlibCompression.deflateAndBase64Encode(settingsJson.toString()));
 
-        String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe", System.getenv("ProgramFiles").replace("\\", "/"));
-        Process process = Runtime.getRuntime().exec(String.format("%s /GetColumnValue \"VB-Audio Virtual Cable\\Device\\CABLE Output\\Capture\" \"Item ID\"", fileLocation));
-        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        final String id = reader.readLine().split("}\\.\\{")[1].replace("}", "");
-        logger.info("SETTING Input Device ID: {}", id);
+        String fileLocation = String.format("%s/ValorantNarrator/SoundVolumeView.exe",
+                System.getenv("ProgramFiles").replace("\\", "/"));
+        Process process = ProcessUtil.start(fileLocation, "/GetColumnValue",
+                "VB-Audio Virtual Cable\\Device\\CABLE Output\\Capture", "Item ID");
+        final String id;
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+            id = reader.readLine().split("}\\.\\{")[1].replace("}", "");
+        }
+        logger.debug("SETTING Input Device ID: {}", id);
         process.waitFor();
-        Path path = Paths.get(System.getenv("LocalAppData"), "VALORANT", "Saved", "Config", String.format("%s-%s", riotClientDetails.subject_id(), riotClientDetails.subject_deployment()), "Windows", "RiotUserSettings.ini");
+        Path path = Paths.get(System.getenv("LocalAppData"), "VALORANT", "Saved", "Config",
+                String.format("%s-%s", riotClientDetails.subject_id(), riotClientDetails.subject_deployment()),
+                "Windows", "RiotUserSettings.ini");
         String configData = Files.readString(path, StandardCharsets.UTF_8);
         String[] data = configData.split("\n");
         boolean deviceCaptureOverridden = false;
-        final String voiceCaptureData = String.format("%s\"{%s}\"", "EAresStringSettingName::VoiceDeviceCaptureHandle=", id);
+        final String voiceCaptureData = String.format("%s\"{%s}\"", "EAresStringSettingName::VoiceDeviceCaptureHandle=",
+                id);
         for (int i = 0; i < data.length; i++) {
             if (data[i].startsWith("EAresStringSettingName::VoiceDeviceCaptureHandle=")) {
                 data[i] = voiceCaptureData;
                 deviceCaptureOverridden = true;
             }
         }
-        try (FileWriter writer = new FileWriter(String.valueOf(path))) {
+        try (FileWriter writer = new FileWriter(String.valueOf(path), StandardCharsets.UTF_8)) {
             writer.write(String.join("\n", data));
-            if (!deviceCaptureOverridden) writer.write(voiceCaptureData);
+            if (!deviceCaptureOverridden) {
+                writer.write("\n" + voiceCaptureData);
+            }
         }
     }
 
@@ -276,87 +284,89 @@ public class VoiceGenerator {
         return isTeamKeyEnabled;
     }
 
-    private void keybindChange(int keyEvent) {
-        String keyText = getKeyName(keyEvent);
+    private void keybindChange(int newKeyEvent) {
+        String keyText = getKeyName(newKeyEvent);
         if (!keyText.isEmpty()) {
             Platform.runLater(() -> ValNarratorController.getLatestInstance().keybindTextField.setText(keyText));
         }
-        Platform.runLater(() -> ValNarratorController.getLatestInstance().keybindText.setText("Pick a keybind for team mic, currently set to " + keyText));
+        Platform.runLater(
+                () -> ValNarratorController.getLatestInstance().keybindText.setText("Team voice key: " + keyText));
     }
 
-    public String getKeyName(int keyEvent) {
-        return KeyEvent.getKeyText(keyEvent);
+    public String getKeyName(int code) {
+        return KeyEvent.getKeyText(code);
     }
 
     private void pressKey() {
-        logger.info(String.format("Pressing key: %s", getKeyName(keyEvent)));
+        logger.debug(String.format("Pressing key: %s", getKeyName(keyEvent)));
         robot.keyPress(keyEvent);
     }
 
     private void releaseKey() {
-        logger.info(String.format("Releasing key: %s", getKeyName(keyEvent)));
+        logger.debug(String.format("Releasing key: %s", getKeyName(keyEvent)));
         robot.keyRelease(keyEvent);
     }
 
-    public synchronized void setKeyEvent(int keyEvent) throws IOException {
+    public synchronized void setKeyEvent(int newKeyEvent) throws IOException {
         ValNarratorController.getLatestInstance().keybindTextField.setDisable(true);
-        this.keyEvent = keyEvent;
+        this.keyEvent = newKeyEvent;
         saveConfig();
 
-        logger.info("Set keybind to: {}", getKeyName(keyEvent));
+        logger.debug("Set keybind to: {}", getKeyName(newKeyEvent));
         ValNarratorController.getLatestInstance().keybindTextField.setDisable(false);
     }
 
-    private void createDefaultConfig() {
-        File configFile = new File(CONFIG_DIR, CONFIG_FILE);
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("keyEvent", defaultKeyEvent);
-        jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyEnabled);
-        jsonObject.addProperty("syncValorantSettingsToggle", syncValorantSettingsToggle);
-        jsonObject.addProperty("sources", Source.toString(currentSource));
-        jsonObject.addProperty("isSystemMicStreamed", isSystemMicStreamed);
-        jsonObject.addProperty("isPrivateMessagesEnabled", isPrivateMessagesEnabled);
-
-        try (FileWriter writer = new FileWriter(configFile)) {
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            gson.toJson(jsonObject, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
+    /**
+     * Loads {@code config.json}, tolerating older layouts. Any keys missing from an
+     * older file simply keep their defaults, and the file is rewritten in the
+     * current
+     * format afterwards so upgrades are seamless (backwards compatible).
+     */
     private void loadConfig() throws IOException {
         File configFile = new File(CONFIG_DIR, CONFIG_FILE);
 
-        if (configFile.exists()) {
-            try (FileReader reader = new FileReader(configFile)) {
-                JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
-                if (jsonObject.has("keyEvent")) {
-                    keyEvent = jsonObject.get("keyEvent").getAsInt();
-                }
-                if (jsonObject.has("isTeamKeyDisabled")) {
-                    isTeamKeyEnabled = jsonObject.get("isTeamKeyDisabled").getAsBoolean();
-                }
-                if (jsonObject.has("syncValorantSettingsToggle")) {
-                    syncValorantSettingsToggle = jsonObject.get("syncValorantSettingsToggle").getAsBoolean();
-                }
-                if (jsonObject.has("sources")) {
-                    currentSource = Source.fromString(jsonObject.get("sources").getAsString());
-                }
-                if (jsonObject.has("isSystemMicStreamed")) {
-                    isSystemMicStreamed = jsonObject.get("isSystemMicStreamed").getAsBoolean();
-                }
-                if (jsonObject.has("isPrivateMessagesEnabled")) {
-                    isPrivateMessagesEnabled = jsonObject.get("isPrivateMessagesEnabled").getAsBoolean();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            saveConfig();
-        } else {
+        if (!configFile.exists()) {
             Files.createDirectories(Paths.get(CONFIG_DIR));
-            createDefaultConfig();
+            saveConfig(); // write defaults (including built-in full-forms)
+            return;
         }
+
+        try (FileReader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
+            JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
+            if (jsonObject.has("keyEvent")) {
+                keyEvent = jsonObject.get("keyEvent").getAsInt();
+            }
+            if (jsonObject.has("isTeamKeyDisabled")) {
+                isTeamKeyEnabled = jsonObject.get("isTeamKeyDisabled").getAsBoolean();
+            }
+            if (jsonObject.has("syncValorantSettingsToggle")) {
+                syncValorantSettingsToggle = jsonObject.get("syncValorantSettingsToggle").getAsBoolean();
+            }
+            if (jsonObject.has("sources")) {
+                currentSource = Source.fromString(jsonObject.get("sources").getAsString());
+            }
+            if (jsonObject.has("isSystemMicStreamed")) {
+                isSystemMicStreamed = jsonObject.get("isSystemMicStreamed").getAsBoolean();
+            }
+            if (jsonObject.has("isPrivateMessagesEnabled")) {
+                isPrivateMessagesEnabled = jsonObject.get("isPrivateMessagesEnabled").getAsBoolean();
+            }
+            if (jsonObject.has("fullForms") && jsonObject.get("fullForms").isJsonObject()) {
+                Map<String, String> loaded = new LinkedHashMap<>();
+                for (Map.Entry<String, JsonElement> e : jsonObject.getAsJsonObject("fullForms").entrySet()) {
+                    if (e.getValue() != null && e.getValue().isJsonPrimitive()) {
+                        loaded.put(e.getKey(), e.getValue().getAsString());
+                    }
+                }
+                if (!loaded.isEmpty())
+                    ChatUtilityHandler.setFullForms(loaded);
+            }
+            // Older configs without "fullForms" keep the built-in defaults and gain
+            // the key on the rewrite below.
+        } catch (Exception e) {
+            logger.warn("Failed to parse config.json, keeping defaults: {}", e.getMessage());
+        }
+        saveConfig();
     }
 
     public void loadCurrentSource(final String sourceName) {
@@ -370,25 +380,27 @@ public class VoiceGenerator {
         }
 
         File configFile = new File(configDir, CONFIG_FILE);
-
-        try (FileWriter writer = new FileWriter(configFile)) {
-            JsonObject jsonObject = getActionKey();
-
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            gson.toJson(jsonObject, writer);
+        try (FileWriter writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
+            new GsonBuilder().setPrettyPrinting().create().toJson(buildConfigJson(), writer);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to write config.json: {}", e.getMessage());
+            throw e;
         }
     }
 
-    private JsonObject getActionKey() {
+    private JsonObject buildConfigJson() {
         JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("configVersion", CONFIG_VERSION);
         jsonObject.addProperty("keyEvent", keyEvent);
         jsonObject.addProperty("isTeamKeyDisabled", isTeamKeyEnabled);
         jsonObject.addProperty("syncValorantSettingsToggle", syncValorantSettingsToggle);
         jsonObject.addProperty("sources", Source.toString(currentSource));
         jsonObject.addProperty("isSystemMicStreamed", isSystemMicStreamed);
         jsonObject.addProperty("isPrivateMessagesEnabled", isPrivateMessagesEnabled);
+
+        JsonObject fullForms = new JsonObject();
+        ChatUtilityHandler.getFullForms().forEach(fullForms::addProperty);
+        jsonObject.add("fullForms", fullForms);
         return jsonObject;
     }
 
@@ -397,10 +409,12 @@ public class VoiceGenerator {
      */
     private boolean waitForAudioToStart(int timeoutMs) {
         long start = System.currentTimeMillis();
-        if (playbackDetector.isPlaying()) return true;
+        if (playbackDetector.isPlaying())
+            return true;
 
         while (!playbackDetector.isPlaying()) {
-            if (System.currentTimeMillis() - start >= timeoutMs) return false;
+            if (System.currentTimeMillis() - start >= timeoutMs)
+                return false;
             Thread.onSpinWait();
         }
         return true;
@@ -436,10 +450,25 @@ public class VoiceGenerator {
         });
     }
 
-    public Map.Entry<VoiceType, HttpResponse<?>> speakVoice(String text) throws IOException, QuotaExhaustedException, OutdatedVersioningException {
+    /**
+     * Synthesizes and plays {@code text} with the currently selected voice, routing
+     * to
+     * the agent voice server, the inbuilt Windows synthesizer, or AWS Polly
+     * (standard or
+     * neural) depending on the active {@link VoiceType}. Serialized on this
+     * instance so
+     * narrations play one at a time.
+     *
+     * @return the voice type used paired with the originating HTTP response
+     * (response is
+     * {@code null} for the inbuilt synthesizer, which plays directly).
+     */
+    public Map.Entry<VoiceType, HttpResponse<?>> speakVoice(String text)
+            throws IOException, QuotaExhaustedException, OutdatedVersioningException {
         final long start = System.currentTimeMillis();
         synchronized (this) {
-            logger.info("({} ms)Narrating: '{}' using ({}) {}", System.currentTimeMillis() - start, text, currentVoiceType, getCurrentVoice());
+            logger.info("({} ms)Narrating: '{}' using ({}) {}", System.currentTimeMillis() - start, text,
+                    currentVoiceType, getCurrentVoice());
 
             final VoiceType voiceType = currentVoiceType;
             InputStream speechStream;
@@ -453,14 +482,20 @@ public class VoiceGenerator {
                         break;
 
                     case INBUILT:
-                        CompletableFuture.runAsync(() -> handleAudioLifecycle(() -> synthesizer.speakInbuiltVoice(currentVoice, text, currentVoiceRate)));
+                        CompletableFuture.runAsync(() -> handleAudioLifecycle(
+                                () -> synthesizer.speakInbuiltVoice(currentVoice, text, currentVoiceRate)));
                         return new AbstractMap.SimpleEntry<>(voiceType, null);
 
                     case STANDARD:
                     default:
-                        boolean isNeural = (ChatDataHandler.getInstance().isPremium() && !normalVoices.contains(currentVoice)) || neuralVoices.contains(currentVoice);
+                        boolean isNeural = (ChatDataHandler.getInstance().isPremium()
+                                && !normalVoices.contains(currentVoice)) || neuralVoices.contains(currentVoice);
 
-                        AbstractMap.Entry<HttpResponse<InputStream>, InputStream> resp = ChatDataHandler.getInstance().getAPIHandler().speakVoice(text, currentVoiceRate, getCurrentVoice(), isNeural ? VoiceEngineType.NEURAL : VoiceEngineType.STANDARD, System.getProperty("aws.accessKeyId"), System.getProperty("aws.secretKey"), System.getProperty("aws.sessionToken"));
+                        AbstractMap.Entry<HttpResponse<InputStream>, InputStream> resp = ChatDataHandler.getInstance()
+                                .getAPIHandler().speakVoice(text, currentVoiceRate, getCurrentVoice(),
+                                        isNeural ? VoiceEngineType.NEURAL : VoiceEngineType.STANDARD,
+                                        System.getProperty("aws.accessKeyId"), System.getProperty("aws.secretKey"),
+                                        System.getProperty("aws.sessionToken"));
 
                         httpResp = resp.getKey();
                         speechStream = resp.getValue();
@@ -496,12 +531,14 @@ public class VoiceGenerator {
 
         @Override
         public void playbackStarted(PlaybackEvent evt) {
-            if (isTeamKeyEnabled) pressKey();
+            if (isTeamKeyEnabled)
+                pressKey();
         }
 
         @Override
         public void playbackFinished(PlaybackEvent evt) {
-            if (isTeamKeyEnabled) releaseKey();
+            if (isTeamKeyEnabled)
+                releaseKey();
         }
     }
 }

@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
@@ -26,7 +27,7 @@ public class AgentVoiceSynthesizer {
     private volatile boolean hasError = false;
 
     /**
-     * UPDATE-ONLY constructor — used only during the auto-updater.
+     * UPDATE-ONLY constructor - used only during the auto-updater.
      * Does NOT start the Python voice server, only downloads updates.
      */
     public AgentVoiceSynthesizer() {
@@ -72,7 +73,7 @@ public class AgentVoiceSynthesizer {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn("Failed to read agent voice file version: {}", e.getMessage());
         }
         return null;
     }
@@ -160,7 +161,7 @@ public class AgentVoiceSynthesizer {
         if (!initialized) throw new IllegalStateException("Voice server not initialized yet.");
         logger.debug("Requesting voice for agent: {}, text: {}", agent, text);
 
-        URL url = new URL("http://127.0.0.1:5005/speak");
+        URL url = URI.create("http://127.0.0.1:5005/speak").toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         conn.setRequestMethod("POST");
