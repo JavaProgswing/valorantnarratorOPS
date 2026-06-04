@@ -124,6 +124,12 @@ class AppInitializer {
             }
 
             // Start-up succeeded (Valorant is running) - now watch for it closing.
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
             watchForValorantExit(controller);
         });
     }

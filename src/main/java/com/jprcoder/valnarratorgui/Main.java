@@ -52,6 +52,14 @@ public class Main {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                new ProcessBuilder("taskkill", "/F", "/IM", "valorantNarrator-agentVoices.exe").start().waitFor();
+                new ProcessBuilder("taskkill", "/F", "/IM", "valorantNarrator-ocr.exe").start().waitFor();
+            } catch (Exception e) {
+                // Ignore exceptions during shutdown hook
+            }
+        }));
     }
 
     public static void reEncryptSignup() throws IOException, InterruptedException {
