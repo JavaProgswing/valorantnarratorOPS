@@ -351,7 +351,7 @@ public class Main {
         try {
             java.util.List<String> command = new java.util.ArrayList<>();
             String cmd = ProcessHandle.current().info().command().orElse("");
-            
+
             if (cmd.endsWith("java.exe") || cmd.endsWith("javaw.exe") || cmd.endsWith("java")) {
                 command.add(cmd);
                 command.add("-cp");
@@ -365,7 +365,7 @@ public class Main {
                 command.add(System.getProperty("java.class.path"));
                 command.add(Main.class.getName());
             }
-            
+
             if (argsToPass != null) {
                 command.addAll(java.util.Arrays.asList(argsToPass));
             }
