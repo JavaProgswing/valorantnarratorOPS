@@ -11,6 +11,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RiotUtilityHandler {
     private static final Logger logger = LoggerFactory.getLogger(RiotUtilityHandler.class);
@@ -82,5 +87,78 @@ public class RiotUtilityHandler {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private static final Pattern LAST_CONFIRMED_MODE = Pattern.compile("(?m)^LastConfirmedFullscreenMode=\\d+");
+    private static final Pattern PREFERRED_MODE = Pattern.compile("(?m)^PreferredFullscreenMode=\\d+");
+    private static final Pattern FULLSCREEN_MODE = Pattern.compile("(?m)^FullscreenMode=\\d+");
+    private static final String SHOOTER_SETTINGS_SECTION = "[/Script/ShooterGame.ShooterGameUserSettings]";
+
+    /**
+     * Forces Valorant to Windowed Fullscreen (Borderless) by patching every account's
+     * {@code GameUserSettings.ini} (EWindowMode 1 = borderless). MUST be called while
+     * Valorant is closed - Valorant rewrites the file on exit, so a change made while it is
+     * running is lost.
+     *
+     * @return the number of config files updated
+     */
+    public static int setBorderlessMode() {
+        Path configRoot = Paths.get(System.getenv("LOCALAPPDATA"), "VALORANT", "Saved", "Config");
+        if (!Files.isDirectory(configRoot)) {
+            logger.warn("Valorant config directory not found: {}", configRoot);
+            return 0;
+        }
+        List<Path> inis;
+        try (var paths = Files.walk(configRoot)) {
+            inis = paths.filter(f -> f.getFileName().toString().equals("GameUserSettings.ini")).toList();
+        } catch (IOException e) {
+            logger.error("Failed to scan Valorant config: {}", e.getMessage());
+            return 0;
+        }
+        int patched = 0;
+        for (Path ini : inis) {
+            if (patchBorderless(ini)) patched++;
+        }
+        logger.info("Set Valorant to borderless in {} config file(s).", patched);
+        return patched;
+    }
+
+    /** Reads one ini, applies the borderless transform, and writes it back only if it changed. */
+    private static boolean patchBorderless(Path ini) {
+        try {
+            String content = Files.readString(ini);
+            String patched = applyBorderless(content);
+            if (patched.equals(content)) return false;
+            Files.writeString(ini, patched);
+            logger.debug("Patched Valorant config to borderless: {}", ini);
+            return true;
+        } catch (IOException e) {
+            logger.warn("Could not patch '{}': {}", ini, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Pure transform: sets the fullscreen-mode keys to 1 (borderless) in a GameUserSettings.ini,
+     * inserting {@code FullscreenMode} under the ShooterGame section if it is absent. Returns the
+     * input unchanged when it has none of the mode keys. The inserted line uses the file's own
+     * newline style, so a mixed-ending file is never produced. Package-private for unit testing.
+     */
+    static String applyBorderless(String content) {
+        boolean hasModeKeys = FULLSCREEN_MODE.matcher(content).find()
+                || PREFERRED_MODE.matcher(content).find()
+                || LAST_CONFIRMED_MODE.matcher(content).find();
+        if (!hasModeKeys) return content; // not a display config
+
+        String newline = content.contains("\r\n") ? "\r\n" : "\n";
+        String out = LAST_CONFIRMED_MODE.matcher(content).replaceAll("LastConfirmedFullscreenMode=1");
+        out = PREFERRED_MODE.matcher(out).replaceAll("PreferredFullscreenMode=1");
+        if (FULLSCREEN_MODE.matcher(out).find()) {
+            out = FULLSCREEN_MODE.matcher(out).replaceAll("FullscreenMode=1");
+        } else if (out.contains(SHOOTER_SETTINGS_SECTION)) {
+            out = out.replaceFirst(Pattern.quote(SHOOTER_SETTINGS_SECTION),
+                    Matcher.quoteReplacement(SHOOTER_SETTINGS_SECTION + newline + "FullscreenMode=1"));
+        }
+        return out;
     }
 }

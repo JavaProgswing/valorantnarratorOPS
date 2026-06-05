@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.DataFormatException;
 
 /**
@@ -24,6 +25,9 @@ class AppInitializer {
     // single transient tasklist hiccup is not mistaken for Valorant closing.
     private static final long VALORANT_POLL_MS = 3_000;
     private static final int VALORANT_MISS_LIMIT = 2;
+    // Exclusive-fullscreen -> Borderless handling: prompt once, apply on the next Valorant close.
+    private static final AtomicBoolean fullscreenPrompted = new AtomicBoolean(false);
+    private static volatile boolean pendingBorderlessFix = false;
 
     private AppInitializer() {
     }
@@ -91,6 +95,12 @@ class AppInitializer {
                                 ChatDataHandler.getInstance().message(message);
                             }
                         });
+                // Sidecar reports if Valorant is in exclusive fullscreen (capture blank); prompt
+                // the user to switch to Borderless - needed to read chat and to stop the stutter.
+                ocrChat.setDisplayModeListener(mode -> Platform.runLater(() -> {
+                    if (OcrChatClient.DISPLAY_FULLSCREEN.equals(mode)) onValorantFullscreen();
+                    else if (OcrChatClient.DISPLAY_OK.equals(mode)) fullscreenPrompted.set(false);
+                }));
                 ocrChat.start();
             } catch (IOException e) {
                 logger.warn("Could not start OCR chat sidecar: {}", e.getMessage());
@@ -164,10 +174,34 @@ class AppInitializer {
         watcher.start();
     }
 
+    /** On the FX thread: offer to switch Valorant to Borderless; the change is applied on close. */
+    private static void onValorantFullscreen() {
+        if (!fullscreenPrompted.compareAndSet(false, true)) return; // ask once per fullscreen spell
+        boolean fix = ValNarratorApplication.showConfirmationAlertAndWait("Switch Valorant to Borderless?",
+                "Valorant is running in exclusive Fullscreen. With any overlay (Discord, this app) that "
+                        + "causes periodic stutter, and chat narration cannot read the screen in this mode.\n\n"
+                        + "Automatically switch Valorant to Windowed Fullscreen (Borderless)? It applies the "
+                        + "next time Valorant restarts.");
+        if (fix) {
+            pendingBorderlessFix = true;
+            ValNarratorApplication.showInformation("Borderless Queued",
+                    "Valorant will open in Borderless the next time you restart it.");
+        }
+    }
+
     /**
      * On the FX thread: tell the user Valorant closed, then quit or hide to the tray.
      */
     private static void onValorantClosed(ValNarratorController controller) {
+        if (pendingBorderlessFix) {
+            pendingBorderlessFix = false;
+            // Valorant is closed now so the write sticks. Run off the FX thread - it walks the
+            // Valorant config tree and writes files, which must not block/freeze the UI.
+            CompletableFuture.runAsync(() -> {
+                int n = RiotUtilityHandler.setBorderlessMode();
+                logger.info("Applied borderless to {} Valorant config(s) on close.", n);
+            });
+        }
         boolean exit = ValNarratorApplication.showConfirmationAlertAndWait("Valorant Closed",
                 "Valorant has closed. ValorantNarrator only narrates chat while Valorant is "
                         + "running.\n\nExit now? Choose No to keep it running in the tray - it "

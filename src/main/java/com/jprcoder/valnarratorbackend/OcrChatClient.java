@@ -29,8 +29,14 @@ import java.util.function.Supplier;
  */
 public final class OcrChatClient {
     private static final Logger logger = LoggerFactory.getLogger(OcrChatClient.class);
+
+    /** Display-mode values emitted by the sidecar's {@code display} diagnostic (stderr). */
+    public static final String DISPLAY_FULLSCREEN = "fullscreen";
+    public static final String DISPLAY_OK = "ok";
+
     private final Supplier<String> selfNameSupplier;
     private final Consumer<Message> sink;
+    private volatile Consumer<String> displayModeListener;
 
     private Process process;
     private volatile boolean running;
@@ -43,6 +49,19 @@ public final class OcrChatClient {
     public OcrChatClient(Supplier<String> selfNameSupplier, Consumer<Message> sink) {
         this.selfNameSupplier = selfNameSupplier;
         this.sink = sink;
+    }
+
+    /**
+     * Sets a listener for the sidecar's capture display-mode signal: {@link #DISPLAY_FULLSCREEN}
+     * when Valorant looks to be in exclusive fullscreen (capture stays blank, so chat cannot be
+     * read), {@link #DISPLAY_OK} when normal capture resumes. Used to prompt the user to switch to
+     * Borderless.
+     * <p>
+     * <b>Threading:</b> the listener is invoked on the sidecar's background stderr-reader thread.
+     * A listener that touches UI must marshal onto its UI thread (e.g. {@code Platform.runLater}).
+     */
+    public void setDisplayModeListener(Consumer<String> listener) {
+        this.displayModeListener = listener;
     }
 
     private static String optString(JsonObject json, String key) {
@@ -104,11 +123,30 @@ public final class OcrChatClient {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
             String line;
             while (running && (line = reader.readLine()) != null) {
-                logger.debug("OCR sidecar: {}", line);
+                handleDiag(line);
             }
         } catch (IOException ignored) {
             // sidecar exited; nothing to do.
         }
+    }
+
+    /** Handles a sidecar stderr diagnostic line: routes "display" events, debug-logs the rest. */
+    private void handleDiag(String line) {
+        String trimmed = line.trim();
+        if (trimmed.startsWith("{")) {
+            try {
+                JsonObject json = JsonParser.parseString(trimmed).getAsJsonObject();
+                if ("display".equals(optString(json, "type"))) {
+                    String mode = optString(json, "mode");
+                    Consumer<String> listener = displayModeListener;
+                    if (listener != null && mode != null) listener.accept(mode);
+                    return;
+                }
+            } catch (RuntimeException ignored) {
+                // not JSON we care about; fall through to debug-log
+            }
+        }
+        logger.debug("OCR sidecar: {}", line);
     }
 
     private void handleLine(String line) {
