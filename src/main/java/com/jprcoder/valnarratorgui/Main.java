@@ -179,6 +179,7 @@ public class Main {
                     } catch (InterruptedException ignored) {
                     }
 
+                    restartApplication(args);
                     System.exit(0);
                 }));
             } else {
@@ -344,5 +345,33 @@ public class Main {
 
     public static Properties getProperties() {
         return properties;
+    }
+
+    private static void restartApplication(String[] argsToPass) {
+        try {
+            java.util.List<String> command = new java.util.ArrayList<>();
+            String cmd = ProcessHandle.current().info().command().orElse("");
+            
+            if (cmd.endsWith("java.exe") || cmd.endsWith("javaw.exe") || cmd.endsWith("java")) {
+                command.add(cmd);
+                command.add("-cp");
+                command.add(System.getProperty("java.class.path"));
+                command.add(Main.class.getName());
+            } else if (!cmd.isEmpty()) {
+                command.add(cmd);
+            } else {
+                command.add(System.getProperty("java.home") + java.io.File.separator + "bin" + java.io.File.separator + "java");
+                command.add("-cp");
+                command.add(System.getProperty("java.class.path"));
+                command.add(Main.class.getName());
+            }
+            
+            if (argsToPass != null) {
+                command.addAll(java.util.Arrays.asList(argsToPass));
+            }
+            new ProcessBuilder(command).start();
+        } catch (Exception e) {
+            logger.error("Failed to restart application", e);
+        }
     }
 }
