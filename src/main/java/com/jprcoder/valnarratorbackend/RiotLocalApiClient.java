@@ -53,6 +53,9 @@ public class RiotLocalApiClient {
     private static final long API_READY_TIMEOUT_MS = 300_000;
     private static final long CHAT_CONNECTED_TIMEOUT_MS = 240_000;
     private static final long VALORANT_DETECT_TIMEOUT_MS = 300_000;
+    // Polling interval while we wait for Valorant to appear; short enough to keep startup
+    // responsive without hammering task/session queries.
+    private static final long VALORANT_DETECT_POLL_MS = 5_000;
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
     private final HttpClient httpClient;
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -208,7 +211,7 @@ public class RiotLocalApiClient {
                 return true;
             } catch (Exception e) {
                 if (attempt % 5 == 0)
-                    logger.debug("Local API not reachable yet: {}", e.getMessage());
+                    logger.debug("Local API not reachable yet", e);
                 try {
                     if (LockFileHandler.exists())
                         readLockfile();
@@ -280,7 +283,7 @@ public class RiotLocalApiClient {
                     loggedWait = true;
                 }
             }
-            Thread.sleep(5000);
+            Thread.sleep(VALORANT_DETECT_POLL_MS);
         }
         return false;
     }

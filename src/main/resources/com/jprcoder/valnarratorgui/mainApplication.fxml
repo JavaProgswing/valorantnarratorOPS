@@ -112,21 +112,24 @@
                                 <String fx:value="Fade, VALORANT"/>
                                 <String fx:value="Gekko, VALORANT"/>
                                 <String fx:value="Harbor, VALORANT"/>
+                                <String fx:value="Iso, VALORANT"/>
                                 <String fx:value="Jett, VALORANT"/>
-                                <String fx:value="KAYO, VALORANT"/>
+                                <String fx:value="KAY/O, VALORANT"/>
                                 <String fx:value="Killjoy, VALORANT"/>
+                                <String fx:value="Miks, VALORANT"/>
                                 <String fx:value="Neon, VALORANT"/>
                                 <String fx:value="Omen, VALORANT"/>
                                 <String fx:value="Phoenix, VALORANT"/>
                                 <String fx:value="Raze, VALORANT"/>
                                 <String fx:value="Reyna, VALORANT"/>
-                                <String fx:value="Tejo, VALORANT"/>
                                 <String fx:value="Sage, VALORANT"/>
                                 <String fx:value="Skye, VALORANT"/>
                                 <String fx:value="Sova, VALORANT"/>
-                                <String fx:value="Viper, VALORANT"/>
+                                <String fx:value="Tejo, VALORANT"/>
                                 <String fx:value="Veto, VALORANT"/>
+                                <String fx:value="Viper, VALORANT"/>
                                 <String fx:value="Vyse, VALORANT"/>
+                                <String fx:value="Waylay, VALORANT"/>
                                 <String fx:value="Yoru, VALORANT"/>
                             </FXCollections>
                         </items>

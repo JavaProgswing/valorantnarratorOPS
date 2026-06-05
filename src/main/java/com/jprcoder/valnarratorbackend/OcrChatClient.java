@@ -30,7 +30,9 @@ import java.util.function.Supplier;
 public final class OcrChatClient {
     private static final Logger logger = LoggerFactory.getLogger(OcrChatClient.class);
 
-    /** Display-mode values emitted by the sidecar's {@code display} diagnostic (stderr). */
+    /**
+     * Display-mode values emitted by the sidecar's {@code display} diagnostic (stderr).
+     */
     public static final String DISPLAY_FULLSCREEN = "fullscreen";
     public static final String DISPLAY_OK = "ok";
 
@@ -130,7 +132,9 @@ public final class OcrChatClient {
         }
     }
 
-    /** Handles a sidecar stderr diagnostic line: routes "display" events, debug-logs the rest. */
+    /**
+     * Handles a sidecar stderr diagnostic line: routes "display" events, debug-logs the rest.
+     */
     private void handleDiag(String line) {
         String trimmed = line.trim();
         if (trimmed.startsWith("{")) {

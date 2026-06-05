@@ -27,21 +27,51 @@ public class RiotUtilityHandler {
     public static boolean isValorantRunning() {
         String tasklist = System.getenv("windir") + "\\system32\\tasklist.exe";
         try {
-            Process p = new ProcessBuilder(tasklist, "/nh", "/fi", "Imagename eq " + VALORANT_PROCESS)
+            // CSV output: the default table format truncates the Image Name column to 25 chars,
+            // which clips "VALORANT-Win64-Shipping.exe" (27) so a full-name match would wrongly fail.
+            Process p = new ProcessBuilder(tasklist, "/nh", "/fo", "csv", "/fi", "Imagename eq " + VALORANT_PROCESS)
                     .redirectErrorStream(true)
                     .start();
             try (BufferedReader input = new BufferedReader(
                     new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = input.readLine()) != null) {
-                    if (line.contains(VALORANT_PROCESS)) return true;
+                    if (isValorantTasklistRow(line)) return true;
                 }
             }
             return false;
         } catch (IOException e) {
-            logger.error("Failed to query the task list: {}", e.getMessage());
+            logger.error("Failed to query the task list", e);
             return false;
         }
+    }
+
+    static boolean isValorantTasklistRow(String line) {
+        return VALORANT_PROCESS.equalsIgnoreCase(firstCsvField(line));
+    }
+
+    static String firstCsvField(String line) {
+        if (line == null || line.isEmpty()) return "";
+        if (line.charAt(0) != '"') {
+            int comma = line.indexOf(',');
+            return comma < 0 ? line : line.substring(0, comma);
+        }
+
+        StringBuilder field = new StringBuilder();
+        for (int i = 1; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    field.append('"');
+                    i++;
+                } else {
+                    return field.toString();
+                }
+            } else {
+                field.append(c);
+            }
+        }
+        return field.toString();
     }
 
     /**
@@ -68,7 +98,7 @@ public class RiotUtilityHandler {
                 logger.warn("{} not found; using default Riot Client path.", installsJson);
             }
         } catch (Exception e) {
-            logger.warn("Could not read RiotClientInstalls.json, using default path: {}", e.getMessage());
+            logger.warn("Could not read RiotClientInstalls.json, using default path", e);
         }
 
         if (!new File(riotClientPath).isFile()) {
@@ -83,7 +113,7 @@ public class RiotUtilityHandler {
             logger.info("Valorant launch command issued.");
             Thread.sleep(2000); // give the client a moment to spin up
         } catch (IOException e) {
-            logger.error("Failed to launch Valorant via Riot Client: {}", e.getMessage());
+            logger.error("Failed to launch Valorant via Riot Client", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -112,7 +142,7 @@ public class RiotUtilityHandler {
         try (var paths = Files.walk(configRoot)) {
             inis = paths.filter(f -> f.getFileName().toString().equals("GameUserSettings.ini")).toList();
         } catch (IOException e) {
-            logger.error("Failed to scan Valorant config: {}", e.getMessage());
+            logger.error("Failed to scan Valorant config", e);
             return 0;
         }
         int patched = 0;
@@ -123,7 +153,9 @@ public class RiotUtilityHandler {
         return patched;
     }
 
-    /** Reads one ini, applies the borderless transform, and writes it back only if it changed. */
+    /**
+     * Reads one ini, applies the borderless transform, and writes it back only if it changed.
+     */
     private static boolean patchBorderless(Path ini) {
         try {
             String content = Files.readString(ini);
@@ -133,7 +165,7 @@ public class RiotUtilityHandler {
             logger.debug("Patched Valorant config to borderless: {}", ini);
             return true;
         } catch (IOException e) {
-            logger.warn("Could not patch '{}': {}", ini, e.getMessage());
+            logger.warn("Could not patch '{}'", ini, e);
             return false;
         }
     }

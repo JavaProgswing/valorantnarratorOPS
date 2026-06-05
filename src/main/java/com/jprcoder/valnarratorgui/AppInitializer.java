@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.zip.DataFormatException;
 
 /**
@@ -21,16 +22,17 @@ import java.util.zip.DataFormatException;
  */
 class AppInitializer {
     private static final Logger logger = LoggerFactory.getLogger(AppInitializer.class);
-    // Valorant-exit watch: poll cadence + consecutive misses required before acting, so a
-    // single transient tasklist hiccup is not mistaken for Valorant closing.
+    // Valorant-exit watch: poll cadence, then a burst of confirmation re-checks before acting,
+    // so a single transient/slow tasklist query is never mistaken for Valorant closing.
     private static final long VALORANT_POLL_MS = 3_000;
-    private static final int VALORANT_MISS_LIMIT = 2;
+    private static final int VALORANT_CONFIRM_CHECKS = 3;
+    private static final long VALORANT_CONFIRM_GAP_MS = 1_500;
+    // Give the Riot client a short grace period after connecting so startup settles before the
+    // exit watcher begins polling; this avoids racing the launch handoff.
+    private static final long POST_START_WATCH_DELAY_MS = 5_000;
     // Exclusive-fullscreen -> Borderless handling: prompt once, apply on the next Valorant close.
     private static final AtomicBoolean fullscreenPrompted = new AtomicBoolean(false);
     private static volatile boolean pendingBorderlessFix = false;
-
-    private AppInitializer() {
-    }
 
     static void start(ValNarratorController controller, RiotLocalApiClient localApi) {
         // Indeterminate bar while we connect; flipped to "done" on success.
@@ -52,7 +54,7 @@ class AppInitializer {
             } catch (IOException | InterruptedException e) {
                 if (e instanceof InterruptedException)
                     Thread.currentThread().interrupt();
-                logger.error("Local API connection failed: {}", e.getMessage());
+                logger.error("Local API connection failed", e);
                 Platform.runLater(() -> {
                     controller.progressLogin.setProgress(0);
                     ValNarratorApplication.showAlertAndWait("Connection Error",
@@ -65,9 +67,9 @@ class AppInitializer {
             String selfPuuid = localApi.getSelfPuuid();
             logger.info("Self PUUID: {}", selfPuuid);
 
-            // Mark loading complete, switch to the user panel.
-            controller.isLoading = false;
             Platform.runLater(() -> {
+                // Mark loading complete, switch to the user panel.
+                controller.isLoading = false;
                 controller.progressLogin.setProgress(1);
                 controller.panelInfo.setVisible(false);
                 controller.panelSettings.setVisible(false);
@@ -103,7 +105,7 @@ class AppInitializer {
                 }));
                 ocrChat.start();
             } catch (IOException e) {
-                logger.warn("Could not start OCR chat sidecar: {}", e.getMessage());
+                logger.warn("Could not start OCR chat sidecar", e);
             }
 
             Platform.runLater(() -> {
@@ -130,18 +132,21 @@ class AppInitializer {
             } catch (IOException | DataFormatException | InterruptedException e) {
                 if (e instanceof InterruptedException)
                     Thread.currentThread().interrupt();
-                logger.warn("Failed to sync Valorant settings on startup: {}", e.getMessage());
+                logger.warn("Failed to sync Valorant settings on startup", e);
             }
 
             // Start-up succeeded (Valorant is running) - now watch for it closing.
             try {
-                Thread.sleep(5000);
+                Thread.sleep(POST_START_WATCH_DELAY_MS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
             }
             watchForValorantExit(controller);
         });
+    }
+
+    private AppInitializer() {
     }
 
     /**
@@ -151,19 +156,13 @@ class AppInitializer {
      */
     private static void watchForValorantExit(ValNarratorController controller) {
         Thread watcher = new Thread(() -> {
-            int misses = 0;
             while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    Thread.sleep(VALORANT_POLL_MS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-                if (RiotUtilityHandler.isValorantRunning()) {
-                    misses = 0;
-                    continue;
-                }
-                if (++misses < VALORANT_MISS_LIMIT) continue; // tolerate a transient miss
+                if (!sleepMs(VALORANT_POLL_MS, Thread::sleep)) return;
+                if (RiotUtilityHandler.isValorantRunning()) continue;
+                // Suspected exit - re-check a few times in quick succession so a single failed or
+                // slow tasklist query is never mistaken for Valorant closing.
+                if (!confirmValorantClosed(RiotUtilityHandler::isValorantRunning, Thread::sleep,
+                        VALORANT_CONFIRM_CHECKS, VALORANT_CONFIRM_GAP_MS)) continue;
 
                 logger.info("Valorant has closed.");
                 Platform.runLater(() -> onValorantClosed(controller));
@@ -174,14 +173,46 @@ class AppInitializer {
         watcher.start();
     }
 
-    /** On the FX thread: offer to switch Valorant to Borderless; the change is applied on close. */
+    /**
+     * Re-checks several times; returns true only if Valorant stays absent across every check.
+     */
+    @SuppressWarnings("SameParameterValue")
+    static boolean confirmValorantClosed(BooleanSupplier isValorantRunning, Sleeper sleeper,
+                                         int confirmChecks, long confirmGapMs) {
+        for (int i = 0; i < confirmChecks; i++) {
+            if (!sleepMs(confirmGapMs, sleeper)) return false;
+            if (isValorantRunning.getAsBoolean()) return false; // recovered -> not closed
+        }
+        return true;
+    }
+
+    /**
+     * Sleeps the given milliseconds; returns false if interrupted (caller should stop).
+     */
+    @SuppressWarnings("SameParameterValue")
+    static boolean sleepMs(long ms, Sleeper sleeper) {
+        try {
+            sleeper.sleep(ms);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    /**
+     * On the FX thread: offer to switch Valorant to Borderless; the change is applied on close.
+     */
     private static void onValorantFullscreen() {
         if (!fullscreenPrompted.compareAndSet(false, true)) return; // ask once per fullscreen spell
         boolean fix = ValNarratorApplication.showConfirmationAlertAndWait("Switch Valorant to Borderless?",
-                "Valorant is running in exclusive Fullscreen. With any overlay (Discord, this app) that "
-                        + "causes periodic stutter, and chat narration cannot read the screen in this mode.\n\n"
-                        + "Automatically switch Valorant to Windowed Fullscreen (Borderless)? It applies the "
-                        + "next time Valorant restarts.");
+                """
+                        Valorant is running in exclusive Fullscreen. With any overlay (Discord, this app) that
+                        causes periodic stutter, and chat narration cannot read the screen in this mode.
+                        
+                        Automatically switch Valorant to Windowed Fullscreen (Borderless)? It applies the next
+                        time Valorant restarts.
+                        """);
         if (fix) {
             pendingBorderlessFix = true;
             ValNarratorApplication.showInformation("Borderless Queued",
@@ -203,9 +234,12 @@ class AppInitializer {
             });
         }
         boolean exit = ValNarratorApplication.showConfirmationAlertAndWait("Valorant Closed",
-                "Valorant has closed. ValorantNarrator only narrates chat while Valorant is "
-                        + "running.\n\nExit now? Choose No to keep it running in the tray - it "
-                        + "resumes automatically when Valorant reopens.");
+                """
+                        Valorant has closed. ValorantNarrator only narrates chat while Valorant is running.
+                        
+                        Exit now? Choose No to keep it running in the tray - it resumes automatically when
+                        Valorant reopens.
+                        """);
         if (exit) {
             logger.info("Exiting after Valorant closed.");
             Platform.exit();
@@ -216,8 +250,13 @@ class AppInitializer {
                 Stage stage = (Stage) controller.topBar.getScene().getWindow();
                 if (stage != null) stage.hide();
             } catch (Exception e) {
-                logger.debug("Could not minimise to tray: {}", e.getMessage());
+                logger.debug("Could not minimise to tray", e);
             }
         }
+    }
+
+    @FunctionalInterface
+    interface Sleeper {
+        void sleep(long ms) throws InterruptedException;
     }
 }
