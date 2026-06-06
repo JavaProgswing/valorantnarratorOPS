@@ -65,7 +65,12 @@ public class RiotLocalApiClient {
     private String baseUrl;
     private String selfPuuid;
     private String selfName;
+    static {
+        System.setProperty("jdk.internal.httpclient.disableHostnameVerification", "true");
+    }
     private ReadinessListener readinessListener;
+
+    private String subjectDeployment;
 
     public RiotLocalApiClient() {
         this(buildLocalHttpClient());
@@ -170,6 +175,18 @@ public class RiotLocalApiClient {
         return selfName;
     }
 
+    static String launchArgument(JsonObject session, String prefix) {
+        if (!session.has("launchConfiguration") || !session.get("launchConfiguration").isJsonObject()) return null;
+        JsonObject launchConfig = session.getAsJsonObject("launchConfiguration");
+        if (!launchConfig.has("arguments") || !launchConfig.get("arguments").isJsonArray()) return null;
+
+        for (JsonElement arg : launchConfig.getAsJsonArray("arguments")) {
+            String value = arg.getAsString();
+            if (value.startsWith(prefix)) return value.substring(prefix.length());
+        }
+        return null;
+    }
+
     public LockFileHandler getLockFile() {
         return lockFile;
     }
@@ -259,6 +276,15 @@ public class RiotLocalApiClient {
 
     // --- Stage 4: Valorant detection -----------------------------------
 
+    /**
+     * Valorant deployment/region from the current game launch args (for example
+     * {@code ap}). Used with {@link #getSelfPuuid()} to target the active local
+     * Valorant config folder ({@code <puuid>-<deployment>}).
+     */
+    public String getSubjectDeployment() {
+        return subjectDeployment;
+    }
+
     private boolean waitForValorant() throws InterruptedException {
         long deadline = System.currentTimeMillis() + VALORANT_DETECT_TIMEOUT_MS;
         boolean loggedWait = false;
@@ -272,6 +298,9 @@ public class RiotLocalApiClient {
                         if (el.isJsonObject()) {
                             JsonObject s = el.getAsJsonObject();
                             if (s.has("productId") && "valorant".equals(s.get("productId").getAsString())) {
+                                String subject = launchArgument(s, "-subject=");
+                                if (selfPuuid == null && subject != null) selfPuuid = subject;
+                                subjectDeployment = launchArgument(s, "-ares-deployment=");
                                 return true;
                             }
                         }

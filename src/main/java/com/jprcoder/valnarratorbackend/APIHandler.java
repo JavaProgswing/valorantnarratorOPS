@@ -51,13 +51,17 @@ public class APIHandler {
                     reEncryptSignup();
                 }
                 return resp;
-            } catch (IOException | InterruptedException e) {
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while sending request " + request.uri(), e);
+            } catch (IOException e) {
                 logger.warn("{} failed, retrying... {}", request, e.getMessage());
 
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while retrying request " + request.uri(), ie);
                 }
             }
         }
@@ -339,16 +343,43 @@ public class APIHandler {
         return messageQuota;
     }
 
-    public EntitlementsTokenResponse getEntitlement(LockFileHandler lockFileHandler) {
-        String entitlementUrl = String.format("https://127.0.0.1:%d/entitlements/v1/token", lockFileHandler.getPort());
-        String auth = String.format("Basic %s", new String(Base64.getEncoder().encode(String.format("riot:%s", lockFileHandler.getPassword()).getBytes())));
-        HttpRequest entitlementReq = HttpRequest.newBuilder().uri(URI.create(entitlementUrl)).setHeader("Authorization", auth).build();
-        final String responseBody;
-        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), entitlementReq, HttpResponse.BodyHandlers.ofString());
-        logger.debug(String.valueOf(response));
-        responseBody = response.body().replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
-        logger.debug(responseBody);
-        return new Gson().fromJson(responseBody, EntitlementsTokenResponse.class);
+    static RiotClientDetails extractRiotClientDetails(Map<String, JsonObject> sessionsResponse) {
+        if (sessionsResponse == null) return null;
+
+        for (Map.Entry<String, JsonObject> entry : sessionsResponse.entrySet()) {
+            if ("host_app".equals(entry.getKey())) continue;
+            JsonObject sessionData = entry.getValue();
+            if (sessionData == null) continue;
+            if (sessionData.has("productId") && !"valorant".equals(sessionData.get("productId").getAsString())) {
+                continue;
+            }
+            if (!sessionData.has("version") || !sessionData.has("launchConfiguration")) {
+                continue;
+            }
+
+            String version = sessionData.get("version").getAsString();
+            String subjectId = null;
+            String subjectDeployment = null;
+            JsonObject launchConfig = sessionData.get("launchConfiguration").getAsJsonObject();
+            if (!launchConfig.has("arguments") || !launchConfig.get("arguments").isJsonArray()) {
+                continue;
+            }
+
+            JsonArray arguments = launchConfig.get("arguments").getAsJsonArray();
+            for (var arg : arguments) {
+                String value = arg.getAsString();
+                if (value.startsWith("-subject=")) {
+                    subjectId = value.substring("-subject=".length());
+                }
+                if (value.startsWith("-ares-deployment=")) {
+                    subjectDeployment = value.substring("-ares-deployment=".length());
+                }
+            }
+            if (version != null && subjectId != null && subjectDeployment != null) {
+                return new RiotClientDetails(version, subjectId, subjectDeployment);
+            }
+        }
+        return null;
     }
 
     public String getClientPlatform() {
@@ -371,46 +402,44 @@ public class APIHandler {
         return gson.fromJson(responseBody, playerListType);
     }
 
-    public RiotClientDetails getRiotClientDetails(LockFileHandler lockFileHandler) {
-        String riotClientSessionUrl = String.format("https://127.0.0.1:%d/product-session/v1/external-sessions", lockFileHandler.getPort());
+    public EntitlementsTokenResponse getEntitlement(LockFileHandler lockFileHandler) {
+        String entitlementUrl = String.format("https://127.0.0.1:%d/entitlements/v1/token", lockFileHandler.getPort());
         String auth = String.format("Basic %s", new String(Base64.getEncoder().encode(String.format("riot:%s", lockFileHandler.getPassword()).getBytes())));
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(riotClientSessionUrl)).setHeader("Authorization", auth).build();
-        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
+        HttpRequest entitlementReq = HttpRequest.newBuilder().uri(URI.create(entitlementUrl)).setHeader("Authorization", auth).build();
+        final String responseBody;
+        HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), entitlementReq, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
-        final String responseBody = response.body();
-        logger.debug(String.valueOf(responseBody));
-        Gson gson = new Gson();
-        Type type = new TypeToken<Map<String, JsonObject>>() {
-        }.getType();
-        Map<String, JsonObject> sessionsResponse = gson.fromJson(responseBody, type);
-        String version = null, subject_id = null, subject_deployment = null;
-        for (Map.Entry<String, JsonObject> entry : sessionsResponse.entrySet()) {
-            if (entry.getKey().equals("host_app")) continue;
-            JsonObject sessionData = entry.getValue();
-            version = sessionData.get("version").getAsString();
-            JsonObject launchConfig = sessionData.get("launchConfiguration").getAsJsonObject();
-            JsonArray arguments = launchConfig.get("arguments").getAsJsonArray();
-            for (var arg : arguments) {
-                if (arg.getAsString().startsWith("-subject=")) {
-                    subject_id = arg.getAsString().split("=")[1];
-                }
-                if (arg.getAsString().startsWith("-ares-deployment=")) {
-                    subject_deployment = arg.getAsString().split("=")[1];
-                }
-            }
-        }
+        responseBody = response.body().replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
+        logger.debug("Received Riot entitlement payload.");
+        return new Gson().fromJson(responseBody, EntitlementsTokenResponse.class);
+    }
 
-        if (version == null || subject_id == null || subject_deployment == null) {
+    public RiotClientDetails getRiotClientDetails(LockFileHandler lockFileHandler) {
+        while (true) {
+            String riotClientSessionUrl = String.format("https://127.0.0.1:%d/product-session/v1/external-sessions", lockFileHandler.getPort());
+            String auth = String.format("Basic %s", new String(Base64.getEncoder().encode(String.format("riot:%s", lockFileHandler.getPassword()).getBytes())));
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(riotClientSessionUrl)).setHeader("Authorization", auth).build();
+            HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), request, HttpResponse.BodyHandlers.ofString());
+            logger.debug(String.valueOf(response));
+            final String responseBody = response.body();
+            logger.debug(String.valueOf(responseBody));
+            Gson gson = new Gson();
+            Type type = new TypeToken<Map<String, JsonObject>>() {
+            }.getType();
+            Map<String, JsonObject> sessionsResponse = gson.fromJson(responseBody, type);
+            RiotClientDetails details = extractRiotClientDetails(sessionsResponse);
+            if (details != null) {
+                return details;
+            }
+
             logger.warn("Failed to retrieve Riot Client details, retrying...");
             try {
                 Thread.sleep(750);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while waiting for Riot Client details", e);
             }
-            return getRiotClientDetails(lockFileHandler);
         }
-
-        return new RiotClientDetails(version, subject_id, subject_deployment);
     }
 
     public String getSubscriptionURL() {
@@ -432,7 +461,7 @@ public class APIHandler {
         logger.debug(String.valueOf(response));
         final String responseBody = response.body();
         final String encodedPlayerSettings = String.valueOf(responseBody);
-        logger.debug(encodedPlayerSettings);
+        logger.debug("Received encoded Valorant player settings payload.");
         return new Gson().fromJson(encodedPlayerSettings, JsonObject.class).get("data").getAsString();
     }
 
@@ -443,7 +472,6 @@ public class APIHandler {
         HttpRequest settingsReq = HttpRequest.newBuilder().uri(URI.create("https://player-preferences-usw2.pp.sgp.pvp.net/playerPref/v3/savePreference")).setHeader("Authorization", String.format("Bearer %s", accessToken)).header("X-Riot-ClientPlatform", getClientPlatform()).header("X-Riot-ClientVersion", version).PUT(HttpRequest.BodyPublishers.ofString(jsonString)).header("Content-Type", "application/json").build();
         HttpResponse<String> response = retryUntilSuccess(connectionHandler.getClient(), settingsReq, HttpResponse.BodyHandlers.ofString());
         logger.debug(String.valueOf(response));
-        final String responseBody = response.body();
-        logger.debug(String.valueOf(responseBody));
+        logger.debug("Saved encoded Valorant player settings payload.");
     }
 }

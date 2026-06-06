@@ -124,20 +124,59 @@ public class RiotUtilityHandler {
     private static final Pattern FULLSCREEN_MODE = Pattern.compile("(?m)^FullscreenMode=\\d+");
     private static final String SHOOTER_SETTINGS_SECTION = "[/Script/ShooterGame.ShooterGameUserSettings]";
 
+    private static Path valorantConfigRoot() {
+        return Paths.get(System.getenv("LOCALAPPDATA"), "VALORANT", "Saved", "Config");
+    }
+
     /**
-     * Forces Valorant to Windowed Fullscreen (Borderless) by patching every account's
-     * {@code GameUserSettings.ini} (EWindowMode 1 = borderless). MUST be called while
-     * Valorant is closed - Valorant rewrites the file on exit, so a change made while it is
-     * running is lost.
+     * Forces Valorant to Windowed Fullscreen (Borderless), preferring the active
+     * player's {@code GameUserSettings.ini}. Falls back to scanning every saved Valorant
+     * config only when the active account cannot be identified or its local file is not
+     * present. MUST be called while Valorant is closed - Valorant rewrites the file on
+     * exit, so a change made while it is running is lost.
      *
      * @return the number of config files updated
      */
+    public static int setBorderlessMode(String puuid, String deployment) {
+        return setBorderlessMode(valorantConfigRoot(), puuid, deployment);
+    }
+
+    /**
+     * Legacy fallback: patches every saved local Valorant account config.
+     */
     public static int setBorderlessMode() {
-        Path configRoot = Paths.get(System.getenv("LOCALAPPDATA"), "VALORANT", "Saved", "Config");
+        return setBorderlessMode(valorantConfigRoot(), null, null);
+    }
+
+    static int setBorderlessMode(Path configRoot, String puuid, String deployment) {
         if (!Files.isDirectory(configRoot)) {
             logger.warn("Valorant config directory not found: {}", configRoot);
             return 0;
         }
+
+        Path activePlayerIni = gameUserSettingsPath(configRoot, puuid, deployment);
+        if (activePlayerIni != null) {
+            if (Files.isRegularFile(activePlayerIni)) {
+                boolean patched = patchBorderless(activePlayerIni);
+                logger.info("Set Valorant to borderless in active player config: {}", activePlayerIni);
+                return patched ? 1 : 0;
+            }
+            logger.warn("Active player Valorant config not found at {}; falling back to all configs.", activePlayerIni);
+        }
+
+        return setBorderlessModeInAllConfigs(configRoot);
+    }
+
+    static Path gameUserSettingsPath(Path configRoot, String puuid, String deployment) {
+        if (isBlank(puuid) || isBlank(deployment)) return null;
+        return configRoot.resolve(puuid + "-" + deployment).resolve("Windows").resolve("GameUserSettings.ini");
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private static int setBorderlessModeInAllConfigs(Path configRoot) {
         List<Path> inis;
         try (var paths = Files.walk(configRoot)) {
             inis = paths.filter(f -> f.getFileName().toString().equals("GameUserSettings.ini")).toList();

@@ -132,61 +132,73 @@ public final class OcrChatClient {
         }
     }
 
+    static String parseDisplayModeDiagnostic(String line) {
+        if (line == null) return null;
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.charAt(0) != '{') return null;
+        try {
+            JsonObject json = JsonParser.parseString(trimmed).getAsJsonObject();
+            if (!"display".equals(optString(json, "type"))) return null;
+            return optString(json, "mode");
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    static Message parseChatLine(String line, Supplier<String> selfNameSupplier) {
+        if (line == null) return null;
+        line = line.trim();
+        if (line.isEmpty() || line.charAt(0) != '{') return null;
+
+        JsonObject json = JsonParser.parseString(line).getAsJsonObject();
+        if (!"chat".equals(optString(json, "type"))) return null;
+
+        String body = optString(json, "body");
+        String name = optString(json, "name");
+        if (body == null || body.isEmpty() || name == null || name.isEmpty()) return null;
+
+        String channel = optString(json, "channel");
+        String direction = optString(json, "direction");
+
+        MessageType type;
+        if ("ALL".equals(channel)) {
+            type = MessageType.ALL;
+        } else if ("PARTY".equals(channel)) {
+            type = MessageType.PARTY;
+        } else if ("WHISPER".equals(channel)) {
+            type = MessageType.WHISPER;
+        } else {
+            type = MessageType.TEAM;
+        }
+
+        String self = selfNameSupplier == null ? null : selfNameSupplier.get();
+        boolean own = self != null && self.equalsIgnoreCase(name);
+        if ("TO".equalsIgnoreCase(direction)) {
+            own = true;
+        } else if ("FROM".equalsIgnoreCase(direction)) {
+            own = false;
+        }
+
+        return new Message(type, name, body, own);
+    }
+
     /**
      * Handles a sidecar stderr diagnostic line: routes "display" events, debug-logs the rest.
      */
     private void handleDiag(String line) {
-        String trimmed = line.trim();
-        if (trimmed.startsWith("{")) {
-            try {
-                JsonObject json = JsonParser.parseString(trimmed).getAsJsonObject();
-                if ("display".equals(optString(json, "type"))) {
-                    String mode = optString(json, "mode");
-                    Consumer<String> listener = displayModeListener;
-                    if (listener != null && mode != null) listener.accept(mode);
-                    return;
-                }
-            } catch (RuntimeException ignored) {
-                // not JSON we care about; fall through to debug-log
-            }
+        String mode = parseDisplayModeDiagnostic(line);
+        if (mode != null) {
+            Consumer<String> listener = displayModeListener;
+            if (listener != null) listener.accept(mode);
+            return;
         }
         logger.debug("OCR sidecar: {}", line);
     }
 
     private void handleLine(String line) {
-        line = line.trim();
-        if (line.isEmpty() || line.charAt(0) != '{') return;
         try {
-            JsonObject json = JsonParser.parseString(line).getAsJsonObject();
-            if (!"chat".equals(optString(json, "type"))) return;
-
-            String body = optString(json, "body");
-            String name = optString(json, "name");
-            if (body == null || body.isEmpty() || name == null || name.isEmpty()) return;
-
-            String channel = optString(json, "channel");
-            String direction = optString(json, "direction");
-
-            MessageType type;
-            if ("ALL".equals(channel)) {
-                type = MessageType.ALL;
-            } else if ("PARTY".equals(channel)) {
-                type = MessageType.PARTY;
-            } else if ("WHISPER".equals(channel)) {
-                type = MessageType.WHISPER;
-            } else {
-                type = MessageType.TEAM;
-            }
-
-            String self = selfNameSupplier == null ? null : selfNameSupplier.get();
-            boolean own = self != null && self.equalsIgnoreCase(name);
-            if ("TO".equalsIgnoreCase(direction)) {
-                own = true;
-            } else if ("FROM".equalsIgnoreCase(direction)) {
-                own = false;
-            }
-
-            Message message = new Message(type, name, body, own);
+            Message message = parseChatLine(line, selfNameSupplier);
+            if (message == null) return;
             logger.debug("OCR chat: {}", message);
             sink.accept(message);
         } catch (RuntimeException e) {

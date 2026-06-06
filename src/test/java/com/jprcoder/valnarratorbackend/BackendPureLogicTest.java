@@ -1,7 +1,12 @@
 package com.jprcoder.valnarratorbackend;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,6 +15,14 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class BackendPureLogicTest {
+
+    @TempDir
+    Path tempDir;
+
+    @AfterEach
+    void resetFullForms() {
+        ChatUtilityHandler.setFullForms(ChatUtilityHandler.getDefaultFullForms());
+    }
 
     @Test
     void sourceFromStringAcceptsLowercaseAndUnderscores() {
@@ -60,6 +73,32 @@ class BackendPureLogicTest {
         assertEquals("Nice shot", message.getContent());
         assertFalse(message.isOwnMessage());
         assertEquals("(TEAM)PlayerOne: Nice shot", message.toString());
+    }
+
+    @Test
+    void chatStatsCountMessagesCharactersWordsAndAverageLength() {
+        Chat chat = new Chat(10);
+
+        chat.updateMessageStats(new Message(MessageType.TEAM, "A", "two words", false));
+        chat.updateMessageStats(new Message(MessageType.TEAM, "B", "  spaced   words  here  ", false));
+
+        assertEquals(2, chat.getMessagesSent());
+        assertEquals(33, chat.getCharactersSent());
+        assertEquals(5, chat.getWordsSent());
+        assertEquals(16, chat.getAverageMessageLength());
+    }
+
+    @Test
+    void ignoredPlayerLookupUsesStoredPlayerId() {
+        Chat chat = new Chat(10);
+        chat.getPlayerNameTable().put("Teammate", "player-id");
+
+        chat.addIgnoredPlayer("Teammate");
+
+        assertTrue(chat.isIgnoredPlayerID("player-id"));
+        assertFalse(chat.isIgnoredPlayerID("Teammate"));
+        chat.removeIgnoredPlayer("Teammate");
+        assertFalse(chat.isIgnoredPlayerID("player-id"));
     }
 
     @Test
@@ -114,6 +153,21 @@ class BackendPureLogicTest {
     }
 
     @Test
+    void zlibRoundTripPreservesUtf8SettingsJson() throws Exception {
+        String input = "{\"message\":\"hello नमस्ते こんにちは\",\"enabled\":true}";
+
+        String encoded = ZlibCompression.deflateAndBase64Encode(input);
+
+        assertEquals(input, ZlibCompression.decodeBase64AndInflate(encoded));
+    }
+
+    @Test
+    void zlibInflateRejectsIncompleteStreamsWithoutSpinning() {
+        assertThrows(java.util.zip.DataFormatException.class,
+                () -> ZlibCompression.inflate(new byte[]{1, 2, 3}));
+    }
+
+    @Test
     void applyBorderlessRewritesExistingFullscreenKeys() {
         String input = """
                 [/Script/ShooterGame.ShooterGameUserSettings]
@@ -147,6 +201,62 @@ class BackendPureLogicTest {
         String input = "[SomeOtherSection]\nResolution=1920x1080\n";
 
         assertEquals(input, RiotUtilityHandler.applyBorderless(input));
+    }
+
+    @Test
+    void gameUserSettingsPathTargetsActivePlayerFolder() {
+        Path expected = tempDir.resolve("current-puuid-ap").resolve("Windows").resolve("GameUserSettings.ini");
+
+        assertEquals(expected, RiotUtilityHandler.gameUserSettingsPath(tempDir, "current-puuid", "ap"));
+        assertNull(RiotUtilityHandler.gameUserSettingsPath(tempDir, "", "ap"));
+        assertNull(RiotUtilityHandler.gameUserSettingsPath(tempDir, "current-puuid", null));
+    }
+
+    @Test
+    void setBorderlessModeTargetsActivePlayerBeforeFallbackScan() throws IOException {
+        String fullscreen = """
+                [/Script/ShooterGame.ShooterGameUserSettings]
+                FullscreenMode=0
+                LastConfirmedFullscreenMode=0
+                PreferredFullscreenMode=0
+                """;
+        Path active = tempDir.resolve("current-puuid-ap").resolve("Windows").resolve("GameUserSettings.ini");
+        Path other = tempDir.resolve("other-puuid-ap").resolve("Windows").resolve("GameUserSettings.ini");
+        Files.createDirectories(active.getParent());
+        Files.createDirectories(other.getParent());
+        Files.writeString(active, fullscreen);
+        Files.writeString(other, fullscreen);
+
+        int patched = RiotUtilityHandler.setBorderlessMode(tempDir, "current-puuid", "ap");
+
+        assertEquals(1, patched);
+        assertTrue(Files.readString(active).contains("FullscreenMode=1"));
+        assertTrue(Files.readString(other).contains("FullscreenMode=0"));
+    }
+
+    @Test
+    void setBorderlessModeFallsBackToAllConfigsWhenActivePlayerFileIsMissing() throws IOException {
+        Path first = tempDir.resolve("first-puuid-ap").resolve("Windows").resolve("GameUserSettings.ini");
+        Path second = tempDir.resolve("second-puuid-ap").resolve("Windows").resolve("GameUserSettings.ini");
+        Files.createDirectories(first.getParent());
+        Files.createDirectories(second.getParent());
+        Files.writeString(first, "[/Script/ShooterGame.ShooterGameUserSettings]\nFullscreenMode=0\n");
+        Files.writeString(second, "[/Script/ShooterGame.ShooterGameUserSettings]\nFullscreenMode=0\n");
+
+        int patched = RiotUtilityHandler.setBorderlessMode(tempDir, "missing-puuid", "ap");
+
+        assertEquals(2, patched);
+        assertTrue(Files.readString(first).contains("FullscreenMode=1"));
+        assertTrue(Files.readString(second).contains("FullscreenMode=1"));
+    }
+
+    @Test
+    void setBorderlessModeReturnsZeroWhenActivePlayerConfigAlreadyBorderless() throws IOException {
+        Path active = tempDir.resolve("current-puuid-ap").resolve("Windows").resolve("GameUserSettings.ini");
+        Files.createDirectories(active.getParent());
+        Files.writeString(active, "[/Script/ShooterGame.ShooterGameUserSettings]\nFullscreenMode=1\n");
+
+        assertEquals(0, RiotUtilityHandler.setBorderlessMode(tempDir, "current-puuid", "ap"));
     }
 }
 

@@ -30,7 +30,8 @@ class AppInitializer {
     // Give the Riot client a short grace period after connecting so startup settles before the
     // exit watcher begins polling; this avoids racing the launch handoff.
     private static final long POST_START_WATCH_DELAY_MS = 5_000;
-    // Exclusive-fullscreen -> Borderless handling: prompt once, apply on the next Valorant close.
+    // Exclusive-fullscreen -> Borderless handling: prompt once per app session, apply on
+    // the next Valorant close.
     private static final AtomicBoolean fullscreenPrompted = new AtomicBoolean(false);
     private static volatile boolean pendingBorderlessFix = false;
 
@@ -101,7 +102,6 @@ class AppInitializer {
                 // the user to switch to Borderless - needed to read chat and to stop the stutter.
                 ocrChat.setDisplayModeListener(mode -> Platform.runLater(() -> {
                     if (OcrChatClient.DISPLAY_FULLSCREEN.equals(mode)) onValorantFullscreen();
-                    else if (OcrChatClient.DISPLAY_OK.equals(mode)) fullscreenPrompted.set(false);
                 }));
                 ocrChat.start();
             } catch (IOException e) {
@@ -129,7 +129,7 @@ class AppInitializer {
                 if (VoiceGenerator.isSyncValorantSettingsEnabled()) {
                     VoiceGenerator.getInstance().syncValorantPlayerSettings();
                 }
-            } catch (IOException | DataFormatException | InterruptedException e) {
+            } catch (IOException | DataFormatException | InterruptedException | RuntimeException e) {
                 if (e instanceof InterruptedException)
                     Thread.currentThread().interrupt();
                 logger.warn("Failed to sync Valorant settings on startup", e);
@@ -142,7 +142,7 @@ class AppInitializer {
                 Thread.currentThread().interrupt();
                 return;
             }
-            watchForValorantExit(controller);
+            watchForValorantExit(controller, localApi);
         });
     }
 
@@ -154,7 +154,7 @@ class AppInitializer {
      * reason to run (it is the chat source), so when it closes the user is told and can
      * either quit or keep ValorantNarrator waiting in the tray for Valorant to reopen.
      */
-    private static void watchForValorantExit(ValNarratorController controller) {
+    private static void watchForValorantExit(ValNarratorController controller, RiotLocalApiClient localApi) {
         Thread watcher = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 if (!sleepMs(VALORANT_POLL_MS, Thread::sleep)) return;
@@ -165,7 +165,7 @@ class AppInitializer {
                         VALORANT_CONFIRM_CHECKS, VALORANT_CONFIRM_GAP_MS)) continue;
 
                 logger.info("Valorant has closed.");
-                Platform.runLater(() -> onValorantClosed(controller));
+                Platform.runLater(() -> onValorantClosed(controller, localApi));
                 return; // handled once
             }
         }, "valorant-exit-watcher");
@@ -204,7 +204,7 @@ class AppInitializer {
      * On the FX thread: offer to switch Valorant to Borderless; the change is applied on close.
      */
     private static void onValorantFullscreen() {
-        if (!fullscreenPrompted.compareAndSet(false, true)) return; // ask once per fullscreen spell
+        if (!markFullscreenPromptedForSession()) return;
         boolean fix = ValNarratorApplication.showConfirmationAlertAndWait("Switch Valorant to Borderless?",
                 """
                         Valorant is running in exclusive Fullscreen. With any overlay (Discord, this app) that
@@ -220,19 +220,43 @@ class AppInitializer {
         }
     }
 
+    static boolean markFullscreenPromptedForSession() {
+        return fullscreenPrompted.compareAndSet(false, true);
+    }
+
+    static void resetFullscreenPromptStateForTest() {
+        fullscreenPrompted.set(false);
+        pendingBorderlessFix = false;
+    }
+
     /**
      * On the FX thread: tell the user Valorant closed, then quit or hide to the tray.
      */
-    private static void onValorantClosed(ValNarratorController controller) {
+    private static void onValorantClosed(ValNarratorController controller, RiotLocalApiClient localApi) {
         if (pendingBorderlessFix) {
             pendingBorderlessFix = false;
             // Valorant is closed now so the write sticks. Run off the FX thread - it walks the
-            // Valorant config tree and writes files, which must not block/freeze the UI.
-            CompletableFuture.runAsync(() -> {
-                int n = RiotUtilityHandler.setBorderlessMode();
-                logger.info("Applied borderless to {} Valorant config(s) on close.", n);
-            });
+            // Valorant config tree and writes files, which must not block/freeze the UI. Ask
+            // about exiting only after the write finishes so System.exit cannot kill it early.
+            CompletableFuture.supplyAsync(() ->
+                            RiotUtilityHandler.setBorderlessMode(localApi.getSelfPuuid(), localApi.getSubjectDeployment()))
+                    .whenComplete((n, error) -> Platform.runLater(() -> {
+                        if (error != null) {
+                            logger.warn("Failed to apply borderless on close", error);
+                        } else {
+                            logger.info("Applied borderless to {} Valorant config(s) on close.", n);
+                        }
+                        askAfterValorantClosed(controller);
+                    }));
+            return;
         }
+        askAfterValorantClosed(controller);
+    }
+
+    /**
+     * On the FX thread: after any queued close-time work is finished, ask whether to exit.
+     */
+    private static void askAfterValorantClosed(ValNarratorController controller) {
         boolean exit = ValNarratorApplication.showConfirmationAlertAndWait("Valorant Closed",
                 """
                         Valorant has closed. ValorantNarrator only narrates chat while Valorant is running.

@@ -13,6 +13,16 @@ class RiotUtilityHandlerTest {
     }
 
     @Test
+    void firstCsvFieldHandlesUnquotedAndEscapedQuotedFields() {
+        assertEquals("VALORANT-Win64-Shipping.exe",
+                RiotUtilityHandler.firstCsvField("VALORANT-Win64-Shipping.exe,1234,Console"));
+        assertEquals("VALORANT\"-Win64-Shipping.exe",
+                RiotUtilityHandler.firstCsvField("\"VALORANT\"\"-Win64-Shipping.exe\",\"1234\""));
+        assertEquals("", RiotUtilityHandler.firstCsvField(null));
+        assertEquals("", RiotUtilityHandler.firstCsvField(""));
+    }
+
+    @Test
     void isValorantTasklistRowMatchesOnlyTheImageNameColumn() {
         assertTrue(RiotUtilityHandler.isValorantTasklistRow(
                 "\"VALORANT-Win64-Shipping.exe\",\"1234\",\"Console\""));

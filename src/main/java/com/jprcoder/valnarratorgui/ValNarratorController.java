@@ -237,7 +237,7 @@ public class ValNarratorController {
             try {
                 VoiceGenerator.getInstance().syncValorantPlayerSettings();
                 showInformation("Voice Settings SYNC", "Valorant settings synced successfully!");
-            } catch (IOException | DataFormatException | InterruptedException e) {
+            } catch (IOException | DataFormatException | InterruptedException | RuntimeException e) {
                 if (e instanceof InterruptedException)
                     Thread.currentThread().interrupt();
                 logger.error("Failed to sync valorant settings: {}", e.getMessage());

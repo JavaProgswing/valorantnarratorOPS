@@ -100,8 +100,7 @@ public class VoiceGenerator {
         LockFileHandler lockFileHandler = new LockFileHandler();
         entitlement = ChatDataHandler.getInstance().getAPIHandler().getEntitlement(lockFileHandler);
         accessToken = entitlement.accessToken();
-        CompletableFuture.runAsync(() -> riotClientDetails = ChatDataHandler.getInstance().getAPIHandler()
-                .getRiotClientDetails(lockFileHandler));
+        riotClientDetails = ChatDataHandler.getInstance().getAPIHandler().getRiotClientDetails(lockFileHandler);
     }
 
     public static void initializeAgentSynthesizer() {

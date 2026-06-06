@@ -12,6 +12,7 @@ class AppInitializerTest {
 
     @AfterEach
     void clearInterruptFlag() {
+        AppInitializer.resetFullscreenPromptStateForTest();
         assertFalse(Thread.interrupted() && Thread.currentThread().isInterrupted());
     }
 
@@ -75,6 +76,15 @@ class AppInitializerTest {
         assertFalse(result);
         assertTrue(Thread.currentThread().isInterrupted());
         assertEquals(0, runningChecks.get());
+    }
+
+    @Test
+    void fullscreenPromptGuardAllowsOnlyOnePromptPerAppSession() {
+        AppInitializer.resetFullscreenPromptStateForTest();
+
+        assertTrue(AppInitializer.markFullscreenPromptedForSession());
+        assertFalse(AppInitializer.markFullscreenPromptedForSession());
+        assertFalse(AppInitializer.markFullscreenPromptedForSession());
     }
 }
 
