@@ -35,6 +35,9 @@ public class VoiceGenerator {
     private static final String CONFIG_FILE = "config.json";
     private static final int CONFIG_VERSION = 2;
     private static final int defaultKeyEvent = KeyEvent.VK_V;
+    // Hard ceiling on how long the push-to-talk key is held for one narration, as a safety net
+    // against the audio detector never reporting silence.
+    private static final int MAX_PTT_HOLD_MS = 30_000;
     private static final ArrayList<String> normalVoices, neuralVoices;
     private static final List<String> inbuiltVoices;
     private static final InbuiltVoiceSynthesizer synthesizer = new InbuiltVoiceSynthesizer();
@@ -136,7 +139,8 @@ public class VoiceGenerator {
     }
 
     private static String filterVoiceName(String voiceName) {
-        return voiceName.substring(0, voiceName.lastIndexOf(','));
+        int comma = voiceName.lastIndexOf(',');
+        return comma < 0 ? voiceName : voiceName.substring(0, comma);
     }
 
     public static void setCurrentRate(final short rate) {
@@ -403,28 +407,50 @@ public class VoiceGenerator {
         return jsonObject;
     }
 
+    private static void sleepQuietly(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void closeQuietly(Closeable c) {
+        if (c == null) return;
+        try {
+            c.close();
+        } catch (IOException ignored) {
+            // best-effort cleanup
+        }
+    }
+
     /**
-     * Wait until detector sees audio or timeout
+     * Wait until detector sees audio or timeout. Polls with a short sleep rather than a busy spin
+     * so it does not peg a CPU core while waiting.
      */
     private boolean waitForAudioToStart(int timeoutMs) {
         long start = System.currentTimeMillis();
-        if (playbackDetector.isPlaying())
-            return true;
-
         while (!playbackDetector.isPlaying()) {
             if (System.currentTimeMillis() - start >= timeoutMs)
                 return false;
-            Thread.onSpinWait();
+            sleepQuietly(3);
         }
         return true;
     }
 
     /**
-     * Wait until detector sees silence
+     * Wait until the detector sees silence, but never longer than {@code maxHoldMs} so a detector
+     * that stays (wrongly) above threshold - e.g. steady background noise on the CABLE line -
+     * cannot pin the push-to-talk key open and block the narration thread indefinitely.
      */
-    private void waitUntilDetectorSilent() {
+    private void waitUntilDetectorSilent(int maxHoldMs) {
+        long start = System.currentTimeMillis();
         while (playbackDetector.isPlaying()) {
-            Thread.onSpinWait();
+            if (System.currentTimeMillis() - start >= maxHoldMs) {
+                logger.warn("Audio still detected after {} ms; releasing key anyway.", maxHoldMs);
+                return;
+            }
+            sleepQuietly(3);
         }
     }
 
@@ -440,7 +466,7 @@ public class VoiceGenerator {
             waitForAudioToStart(3000);
 
             try {
-                waitUntilDetectorSilent();
+                waitUntilDetectorSilent(MAX_PTT_HOLD_MS);
             } finally {
                 if (isTeamKeyEnabled) {
                     releaseKey();
@@ -510,6 +536,7 @@ public class VoiceGenerator {
                 player = new AdvancedPlayer(speechStream, FactoryRegistry.systemRegistry().createAudioDevice());
             } catch (JavaLayerException e) {
                 logger.warn("Failed to initialize player: {}", e.getMessage());
+                closeQuietly(speechStream);
                 return new AbstractMap.SimpleEntry<>(voiceType, httpResp);
             }
 
@@ -519,6 +546,14 @@ public class VoiceGenerator {
                 player.play();
             } catch (JavaLayerException e) {
                 logger.warn("Playback exception: {}", e.getMessage());
+                // Playback may have died after the key was pressed (playbackStarted) but before
+                // playbackFinished released it - release defensively so the mic key never sticks.
+                if (isTeamKeyEnabled) {
+                    releaseKey();
+                }
+            } finally {
+                player.close();
+                closeQuietly(speechStream);
             }
 
             return new AbstractMap.SimpleEntry<>(voiceType, httpResp);

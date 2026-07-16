@@ -10,13 +10,42 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static com.jprcoder.valnarratorbackend.ChatUtilityHandler.expandShortForms;
 
 public class ChatDataHandler {
     private static final Logger logger = LoggerFactory.getLogger(ChatDataHandler.class);
     private static final ChatDataHandler singleton;
+
+    /**
+     * Narration runs on a single dedicated daemon thread (not the shared ForkJoin commonPool the
+     * Riot API also uses) with a bounded queue, so a burst of chat cannot pile up blocked threads
+     * or starve the rest of the app. {@link VoiceGenerator#speakVoice} already serializes playback;
+     * this makes that ordering FIFO and stops the backlog from growing without bound. When the
+     * queue is full the oldest not-yet-started narration is dropped (kept: the newest, most relevant
+     * lines) rather than letting latency snowball.
+     */
+    private static final int NARRATION_QUEUE_CAPACITY = 8;
+    /**
+     * Repeat-suppression window: the same line re-emitted within this many ms narrates once.
+     */
+    private static final long DUPLICATE_WINDOW_MS = 2500;
+
+    private final ThreadPoolExecutor narrationExecutor = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(NARRATION_QUEUE_CAPACITY),
+            r -> {
+                Thread t = new Thread(r, "narration-dispatch");
+                t.setDaemon(true);
+                return t;
+            },
+            new ThreadPoolExecutor.DiscardOldestPolicy());
+    private final NarrationText.RecentDuplicateFilter recentNarrations =
+            new NarrationText.RecentDuplicateFilter(DUPLICATE_WINDOW_MS, 32);
 
     static {
         try {
@@ -117,19 +146,15 @@ public class ChatDataHandler {
             }
         }
         final String finalBody = message.getContent().replace("/", "").replace("\\", "");
-        CompletableFuture.runAsync(() -> {
-            try {
-                VoiceGenerator.getInstance().speakVoice(expandShortForms(finalBody));
-            } catch (IOException e) {
-                logger.warn("Failed to narrate message: {}", e.getMessage());
-            } catch (QuotaExhaustedException e) {
-                logger.warn("Quota exhausted, {}", e.getMessage());
-                ValNarratorController.getLatestInstance().markQuotaExhausted();
-            } catch (OutdatedVersioningException e) {
-                ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.WARNING_MESSAGE);
-                throw new RuntimeException(e);
-            }
-        });
+        final String toSpeak = NarrationText.cap(expandShortForms(finalBody), NarrationText.MAX_NARRATION_CHARS);
+        if (toSpeak == null || toSpeak.isBlank()) {
+            return; // nothing left to narrate after sanitising
+        }
+        if (!recentNarrations.allow(NarrationText.key(toSpeak), System.currentTimeMillis())) {
+            logger.debug("Suppressing repeated narration: '{}'", toSpeak);
+            return;
+        }
+        enqueueNarration(toSpeak);
         properties.updateMessageStats(message);
         Platform.runLater(() -> {
             ValNarratorController controller = ValNarratorController.getLatestInstance();
@@ -144,6 +169,31 @@ public class ChatDataHandler {
             properties.getPlayerIDTable().put(playerName, playerName);
             properties.getPlayerNameTable().put(playerName, playerName);
             Platform.runLater(() -> ValNarratorController.getLatestInstance().playerDropdown.getItems().addAll(playerName));
+        }
+    }
+
+    /**
+     * Hands the (already sanitised, capped and de-duplicated) text to the serial narration thread.
+     * The executor's {@code DiscardOldestPolicy} sheds the oldest queued line if narration has
+     * fallen behind, so latency stays bounded instead of snowballing.
+     */
+    private void enqueueNarration(final String text) {
+        try {
+            narrationExecutor.execute(() -> {
+                try {
+                    VoiceGenerator.getInstance().speakVoice(text);
+                } catch (IOException e) {
+                    logger.warn("Failed to narrate message: {}", e.getMessage());
+                } catch (QuotaExhaustedException e) {
+                    logger.warn("Quota exhausted, {}", e.getMessage());
+                    ValNarratorController.getLatestInstance().markQuotaExhausted();
+                } catch (OutdatedVersioningException e) {
+                    ValNarratorApplication.showDialog("Version Outdated", "Please update to the latest ValNarrator update to resume app functioning.", com.jprcoder.valnarratorgui.MessageType.WARNING_MESSAGE);
+                    throw new RuntimeException(e);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            logger.warn("Narration queue unavailable, dropping message: {}", e.getMessage());
         }
     }
 

@@ -28,6 +28,31 @@ class OcrChatClientTest {
     }
 
     @Test
+    void parseChatLineDetectsOwnNameDespiteSingleCharOcrJitter() {
+        Message message = OcrChatClient.parseChatLine(
+                "{\"type\":\"chat\",\"channel\":\"PARTY\",\"name\":\"PENJAMIN FRANKLY\",\"body\":\"test\"}",
+                () -> "PENJAMIN FRANKLN");
+
+        assertNotNull(message);
+        assertTrue(message.isOwnMessage(), "one-character OCR jitter in own name must still count as own");
+    }
+
+    @Test
+    void parseChatLineDoesNotTreatDistinctNamesAsOwn() {
+        Message shortJitter = OcrChatClient.parseChatLine(
+                "{\"type\":\"chat\",\"channel\":\"TEAM\",\"name\":\"non\",\"body\":\"gg\"}",
+                () -> "gon");
+        Message differentName = OcrChatClient.parseChatLine(
+                "{\"type\":\"chat\",\"channel\":\"TEAM\",\"name\":\"Teammate\",\"body\":\"gg\"}",
+                () -> "PlayerOne");
+
+        assertNotNull(shortJitter);
+        assertNotNull(differentName);
+        assertFalse(shortJitter.isOwnMessage(), "short names must match exactly to avoid collisions");
+        assertFalse(differentName.isOwnMessage());
+    }
+
+    @Test
     void parseChatLineMapsKnownChannels() {
         assertEquals(MessageType.ALL, parseChannel("ALL").getMessageType());
         assertEquals(MessageType.PARTY, parseChannel("PARTY").getMessageType());

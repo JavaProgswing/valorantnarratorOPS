@@ -228,7 +228,7 @@ public class RiotLocalApiClient {
                 return true;
             } catch (Exception e) {
                 if (attempt % 5 == 0)
-                    logger.debug("Local API not reachable yet", e);
+                    logger.debug("Local API not reachable yet: {}", e.getMessage());
                 try {
                     if (LockFileHandler.exists())
                         readLockfile();
