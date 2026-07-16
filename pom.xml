@@ -104,129 +104,25 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.0.0</version>
                 <executions>
+                    <!-- Package the jlink runtime image into a native, GUI-subsystem app-image
+                         launcher via jpackage (no console window, embeds the app icon). Replaces the
+                         old warp-packer + VBS + rcedit chain. The helper wipes stale output, runs
+                         jpackage, and stages the result into the installer payload dir as app-image\. -->
                     <execution>
-                        <id>create-noconsole-vbs</id>
+                        <id>jpackage-app-image</id>
                         <phase>package</phase>
                         <goals>
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>${project.basedir}\tools\create-noconsole-vbs.bat</executable>
+                            <executable>${project.basedir}\tools\build-jpackage.bat</executable>
                             <arguments>
-                                <argument>${project.build.directory}\image\bin\launchValorantNarrator.vbs</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>rcedit-execution-1</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${project.basedir}\tools\rh.exe</executable>
-                            <arguments>
-                                <argument>-open</argument>
-                                <argument>${project.build.directory}\image\bin\java.exe</argument>
-
-                                <argument>-save</argument>
-                                <argument>${project.build.directory}\image\bin\java.exe</argument>
-
-                                <argument>-action</argument>
-                                <argument>addskip</argument>
-
-                                <argument>-res</argument>
-                                <argument>${valnarrator.payload.dir}\app.ico
-                                </argument>
-
-                                <argument>-mask</argument>
-                                <argument>ICONGROUP,MAINICON,</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>java-edit-description</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${project.basedir}\tools\rcedit.exe</executable>
-                            <arguments>
-                                <argument>${project.build.directory}\image\bin\java.exe</argument>
-                                <argument>--set-version-string</argument>
-                                <argument>FileDescription</argument>
-                                <argument>Valorant Narrator</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>java-edit-productname</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${project.basedir}\tools\rcedit.exe</executable>
-                            <arguments>
-                                <argument>${project.build.directory}\image\bin\java.exe</argument>
-                                <argument>--set-version-string</argument>
-                                <argument>ProductName</argument>
-                                <argument>Valorant Narrator</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Execution block for warp-packer -->
-                    <execution>
-                        <id>warp-packer-execution</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <!-- warp-packer configuration -->
-                            <executable>${project.basedir}\tools\warp-packer.exe</executable>
-                            <arguments>
-                                <argument>--arch</argument>
-                                <argument>windows-x64</argument>
-
-                                <argument>--input_dir</argument>
+                                <argument>${java.home}</argument>
                                 <argument>${project.build.directory}\image</argument>
-
-                                <argument>--exec</argument>
-                                <argument>bin\${project.artifactId}.bat</argument>
-
-                                <argument>--output</argument>
-                                <argument>${project.build.directory}\${project.artifactId}.exe</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>rcedit-execution-2</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${project.basedir}\tools\rh.exe</executable>
-                            <arguments>
-                                <argument>-open</argument>
-                                <argument>${project.build.directory}\${project.artifactId}.exe</argument>
-
-                                <argument>-save</argument>
-                                <argument>
-                                    ${valnarrator.payload.dir}\${project.artifactId}.exe
-                                </argument>
-
-                                <argument>-action</argument>
-                                <argument>addskip</argument>
-
-                                <argument>-res</argument>
-                                <argument>${valnarrator.payload.dir}\app.ico
-                                </argument>
-
-                                <argument>-mask</argument>
-                                <argument>ICONGROUP,MAINICON,</argument>
+                                <argument>${valnarrator.payload.dir}\app.ico</argument>
+                                <argument>${project.build.directory}\jpackage</argument>
+                                <argument>${valnarrator.payload.dir}</argument>
+                                <argument>${project.version}</argument>
                             </arguments>
                         </configuration>
                     </execution>

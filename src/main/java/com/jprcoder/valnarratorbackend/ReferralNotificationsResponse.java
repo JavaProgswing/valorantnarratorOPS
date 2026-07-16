@@ -4,4 +4,7 @@ import java.util.List;
 
 public class ReferralNotificationsResponse {
     public List<ReferralNotification> notifications;
+
+    public ReferralNotificationsResponse() {
+    }
 }

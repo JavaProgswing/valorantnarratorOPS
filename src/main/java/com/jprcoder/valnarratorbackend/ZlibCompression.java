@@ -7,15 +7,25 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-public class ZlibCompression {
+public final class ZlibCompression {
+
+    private ZlibCompression() {
+        throw new AssertionError("Utility class");
+    }
+
     public static byte[] deflate(byte[] data) {
-        Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true); // Pass true for nowrap option
+        Deflater deflater = new Deflater(
+                Deflater.DEFAULT_COMPRESSION,
+                true
+        );
+
         try {
             deflater.setInput(data);
             deflater.finish();
 
             byte[] buffer = new byte[1024];
-            ByteArrayOutputStream result = new ByteArrayOutputStream(data.length);
+            ByteArrayOutputStream result =
+                    new ByteArrayOutputStream(data.length);
 
             while (!deflater.finished()) {
                 int count = deflater.deflate(buffer);
@@ -29,25 +39,49 @@ public class ZlibCompression {
     }
 
     public static String deflateAndBase64Encode(String data) {
-        byte[] compressedData = deflate(data.getBytes(StandardCharsets.UTF_8));
-        return Base64.getEncoder().encodeToString(compressedData);
+        byte[] compressedData = deflate(
+                data.getBytes(StandardCharsets.UTF_8)
+        );
+
+        return Base64.getEncoder()
+                .encodeToString(compressedData);
     }
 
-    public static byte[] inflate(byte[] compressedData) throws DataFormatException {
+    public static byte[] inflate(byte[] compressedData)
+            throws DataFormatException {
+
         Inflater inflater = new Inflater(true);
+
         try {
             inflater.setInput(compressedData);
 
             byte[] buffer = new byte[1024];
-            ByteArrayOutputStream result = new ByteArrayOutputStream(compressedData.length * 2);
+            ByteArrayOutputStream result =
+                    new ByteArrayOutputStream(compressedData.length * 2);
 
             while (!inflater.finished()) {
                 int count = inflater.inflate(buffer);
+
                 if (count > 0) {
                     result.write(buffer, 0, count);
-                } else if (inflater.needsInput() || inflater.needsDictionary()) {
-                    throw new DataFormatException("Incomplete or invalid deflate stream");
+                    continue;
                 }
+
+                if (inflater.needsInput()) {
+                    throw new DataFormatException(
+                            "Incomplete deflate stream"
+                    );
+                }
+
+                if (inflater.needsDictionary()) {
+                    throw new DataFormatException(
+                            "Deflate stream requires a dictionary"
+                    );
+                }
+
+                throw new DataFormatException(
+                        "Unable to make progress while inflating data"
+                );
             }
 
             return result.toByteArray();
@@ -56,9 +90,15 @@ public class ZlibCompression {
         }
     }
 
-    public static String decodeBase64AndInflate(String data) throws DataFormatException {
+    public static String decodeBase64AndInflate(String data)
+            throws DataFormatException {
+
         byte[] compressedData = Base64.getDecoder().decode(data);
         byte[] inflatedData = inflate(compressedData);
-        return new String(inflatedData, StandardCharsets.UTF_8);
+
+        return new String(
+                inflatedData,
+                StandardCharsets.UTF_8
+        );
     }
 }
