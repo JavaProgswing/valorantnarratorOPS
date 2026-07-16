@@ -6,7 +6,7 @@
 
     <groupId>com.jprcoder</groupId>
     <artifactId>ValorantNarrator</artifactId>
-    <version>4.34</version>
+    <version>4.35</version>
     <name>ValorantNarrator</name>
 
     <properties>
