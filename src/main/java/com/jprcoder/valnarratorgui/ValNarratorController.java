@@ -353,6 +353,46 @@ public class ValNarratorController {
         logger.debug("Opening subscription view for user {}.", Main.serialNumber);
     }
 
+    /**
+     * The free agent-voice trial is used up. Open the premium upgrade modal and drop the user onto a
+     * free inbuilt voice so chat keeps being narrated. Must be called on the FX thread.
+     */
+    public void promptAgentPremiumUpgrade(String message) {
+        selectFirstInbuiltVoice();
+        ValNarratorApplication.showInformation("Premium Agent Voices", message
+                + "\n\nSwitched you to a free voice for now.");
+        openSubscriptionModal();
+    }
+
+    /**
+     * The selected agent voice has been disabled (quality/other). Tell the user and fall back to a
+     * free inbuilt voice. Must be called on the FX thread.
+     */
+    public void notifyAgentVoiceDisabled(String message) {
+        selectFirstInbuiltVoice();
+        ValNarratorApplication.showAlert("Agent Voice Unavailable", message
+                + "\n\nSwitched you to a free voice for now.");
+    }
+
+    /** Selects the first inbuilt voice in the dropdown; the selection listener applies it. */
+    private void selectFirstInbuiltVoice() {
+        try {
+            voices.getSelectionModel().select(String.format("%s, INBUILT", VoiceGenerator.getInbuiltVoices().get(0)));
+        } catch (IndexOutOfBoundsException e) {
+            logger.warn("No inbuilt voice available to fall back to.");
+        }
+    }
+
+    private void openSubscriptionModal() {
+        String subscriptionURL = ChatDataHandler.getInstance().getAPIHandler().getSubscriptionURL();
+        if (subscriptionURL == null) {
+            logger.error("Could not resolve the subscription URL.");
+            return;
+        }
+        String url = subscriptionURL + (subscriptionURL.contains("?") ? "&" : "?") + "user-id=" + Main.serialNumber;
+        SubscriptionView.show(url, Main.serialNumber, ChatDataHandler.getInstance().isPremium());
+    }
+
     public void setPremiumDateLabel(String date) {
         premiumDateLabel.setText(date);
     }

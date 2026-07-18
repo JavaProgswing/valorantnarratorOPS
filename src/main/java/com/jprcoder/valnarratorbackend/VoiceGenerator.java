@@ -43,6 +43,10 @@ public class VoiceGenerator {
     private static final InbuiltVoiceSynthesizer synthesizer = new InbuiltVoiceSynthesizer();
     private static final AgentVoiceSynthesizer agentSynthesizer = new AgentVoiceSynthesizer();
     private static final PlaybackDetector playbackDetector = new PlaybackDetector();
+    // Show the "free trial used up -> upgrade" premium prompt at most once per session, so a burst of
+    // in-game chat can't spam the modal.
+    private static final java.util.concurrent.atomic.AtomicBoolean agentTrialPromptShown =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
 
     private static boolean isTeamKeyEnabled = true;
     private static boolean syncValorantSettingsToggle = true;
@@ -108,6 +112,30 @@ public class VoiceGenerator {
 
     public static void initializeAgentSynthesizer() {
         agentSynthesizer.initialize();
+    }
+
+    /**
+     * Reacts to a non-accepted agent-voice authorization. Quota exhaustion pops the upgrade modal
+     * once per session and drops the user onto a free voice so narration keeps flowing; a disabled
+     * voice informs the user and does the same; a verification error (fail-closed) simply skips the
+     * line and self-heals on the next one.
+     */
+    private static void handleAgentRejection(AgentAuthorization.AgentAuthStatus status, String message) {
+        switch (status) {
+            case REJECTED_QUOTA -> {
+                if (agentTrialPromptShown.compareAndSet(false, true)) {
+                    final String msg = message != null ? message
+                            : "You've used your free premium-voice trial. Upgrade to premium to keep using agent voices.";
+                    Platform.runLater(() -> ValNarratorController.getLatestInstance().promptAgentPremiumUpgrade(msg));
+                }
+            }
+            case REJECTED_DISABLED -> {
+                final String msg = message != null ? message
+                        : "This agent voice is temporarily unavailable.";
+                Platform.runLater(() -> ValNarratorController.getLatestInstance().notifyAgentVoiceDisabled(msg));
+            }
+            default -> logger.warn("Agent voice authorization could not be verified; skipping this line (fail-closed).");
+        }
     }
 
     public static RiotClientDetails getRiotClientDetails() {
@@ -502,9 +530,18 @@ public class VoiceGenerator {
             try {
                 switch (voiceType) {
 
-                    case AGENT:
-                        speechStream = agentSynthesizer.getAgentVoice(currentVoice, text);
+                    case AGENT: {
+                        // The secure gate lives in the voice server itself (it calls the backend to
+                        // authorize before emitting audio, so an extracted exe can't be used standalone).
+                        // Here we just react to a refusal it surfaces.
+                        try {
+                            speechStream = agentSynthesizer.getAgentVoice(currentVoice, text);
+                        } catch (AgentVoiceRejectedException e) {
+                            handleAgentRejection(e.status(), e.getMessage());
+                            return new AbstractMap.SimpleEntry<>(voiceType, null);
+                        }
                         break;
+                    }
 
                     case INBUILT:
                         CompletableFuture.runAsync(() -> handleAudioLifecycle(

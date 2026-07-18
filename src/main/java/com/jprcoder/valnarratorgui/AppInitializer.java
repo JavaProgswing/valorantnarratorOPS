@@ -39,6 +39,9 @@ class AppInitializer {
         // Indeterminate bar while we connect; flipped to "done" on success.
         Platform.runLater(() -> controller.progressLogin.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS));
 
+        // Show the post-update "What's New" recap once (off the critical path; non-blocking).
+        CompletableFuture.runAsync(() -> WhatsNewRecap.maybeShow(Main.currentVersion));
+
         CompletableFuture.runAsync(() -> {
             try {
                 // Only auto-launch Valorant if it isn't already running; otherwise just

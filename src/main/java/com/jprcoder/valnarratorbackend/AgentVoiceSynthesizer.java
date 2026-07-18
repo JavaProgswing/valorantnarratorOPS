@@ -1,6 +1,10 @@
 package com.jprcoder.valnarratorbackend;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.jprcoder.valnarratorencryption.Signature;
+import com.jprcoder.valnarratorencryption.SignatureValidator;
+import com.jprcoder.valnarratorgui.Main;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,6 +141,23 @@ public class AgentVoiceSynthesizer {
         return payloadJson.toString();
     }
 
+    /**
+     * Builds the {@code /speak} body including the signed identity the voice server forwards to the
+     * backend to authorize this synthesis. The signature is minted here (the app holds the per-user
+     * secret; the voice-server exe never does), so an extracted exe cannot self-authorize.
+     */
+    private static String buildSignedSpeakPayload(String agent, String text) throws IOException {
+        Signature sign = SignatureValidator.generateSignature();
+        JsonObject payloadJson = new JsonObject();
+        payloadJson.addProperty("agent", agent);
+        payloadJson.addProperty("text", text);
+        payloadJson.addProperty("hwid", Main.serialNumber);
+        payloadJson.addProperty("version", String.valueOf(Main.currentVersion));
+        payloadJson.addProperty("signature", sign.signature());
+        payloadJson.addProperty("epoch", String.valueOf(sign.epochTime()));
+        return payloadJson.toString();
+    }
+
     // ----------------- STATUS / AGENT LISTING -----------------
 
     public boolean isInitialized() {
@@ -175,6 +196,9 @@ public class AgentVoiceSynthesizer {
             if (numbaCache.mkdirs() || numbaCache.isDirectory()) {
                 builder.environment().put("NUMBA_CACHE_DIR", numbaCache.getAbsolutePath());
             }
+            // Point the voice server at the same backend the app uses, so its own authorization gate
+            // (which refuses to synthesize without backend approval) targets the right endpoint.
+            builder.environment().put("VALNAR_API_URL", Main.API_URL);
             voiceServerProcess = builder.start();
 
             ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -204,7 +228,7 @@ public class AgentVoiceSynthesizer {
         }
     }
 
-    public InputStream getAgentVoice(String agent, String text) throws IOException {
+    public InputStream getAgentVoice(String agent, String text) throws IOException, AgentVoiceRejectedException {
         if (!initialized) throw new IllegalStateException("Voice server not initialized yet.");
         logger.debug("Requesting voice for agent: {}, text: {}", agent, text);
 
@@ -217,20 +241,48 @@ public class AgentVoiceSynthesizer {
         conn.setConnectTimeout(VOICE_CONNECT_TIMEOUT_MS);
         conn.setReadTimeout(VOICE_READ_TIMEOUT_MS);
 
-        byte[] payload = buildSpeakPayload(agent, text).getBytes(StandardCharsets.UTF_8);
+        byte[] payload = buildSignedSpeakPayload(agent, text).getBytes(StandardCharsets.UTF_8);
 
         try {
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(payload);
             }
             int code = conn.getResponseCode();
-            if (code != 200) {
-                throw new IOException("HTTP " + code + " from voice server.");
+            if (code == 200) {
+                return conn.getInputStream();
             }
-            return conn.getInputStream();
+            // Non-200: the server refused (authorization) or errored. Read the reason and surface it.
+            AgentVoiceRejectedException rejection = parseRejection(conn, code);
+            conn.disconnect();
+            throw rejection;
         } catch (IOException e) {
             conn.disconnect();
             throw e;
         }
+    }
+
+    /**
+     * Reads the voice server's non-200 error body ({@code {"reason":..,"message":..}}) into a typed
+     * rejection. A missing/garbled body (e.g. a genuine server crash) maps to ERROR (fail closed).
+     */
+    private static AgentVoiceRejectedException parseRejection(HttpURLConnection conn, int code) {
+        String reason = conn.getHeaderField("reason");
+        String message = null;
+        try (InputStream err = conn.getErrorStream()) {
+            if (err != null) {
+                String bodyText = new String(err.readAllBytes(), StandardCharsets.UTF_8);
+                JsonObject body = JsonParser.parseString(bodyText).getAsJsonObject();
+                if (reason == null && body.has("reason") && !body.get("reason").isJsonNull()) {
+                    reason = body.get("reason").getAsString();
+                }
+                if (body.has("message") && !body.get("message").isJsonNull()) {
+                    message = body.get("message").getAsString();
+                }
+            }
+        } catch (Exception ignored) {
+            // Fall through with whatever we have; unknown reason => ERROR below.
+        }
+        logger.debug("Voice server refused (HTTP {}), reason={}", code, reason);
+        return new AgentVoiceRejectedException(AgentVoiceRejectedException.fromReason(reason), message);
     }
 }
