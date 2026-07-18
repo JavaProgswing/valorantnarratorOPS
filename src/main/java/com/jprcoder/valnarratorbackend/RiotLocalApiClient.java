@@ -194,13 +194,19 @@ public class RiotLocalApiClient {
     // --- Stage 1: lockfile ---------------------------------------------
 
     private boolean waitForLockfile() throws InterruptedException {
+        // A lockfile left over from a crashed/force-killed Riot Client session is otherwise
+        // indistinguishable from a live one, and stage 2 would spend its whole timeout hammering a
+        // dead port. Clearing it here (no-op if it's actually live) lets this loop correctly wait
+        // for a freshly-launched Riot Client to write a valid one instead.
+        LockFileHandler.deleteStale();
+
         long deadline = System.currentTimeMillis() + LOCKFILE_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline && running.get()) {
-            if (LockFileHandler.exists())
+            if (LockFileHandler.exists() && !LockFileHandler.isStale())
                 return true;
             Thread.sleep(1000);
         }
-        return LockFileHandler.exists();
+        return LockFileHandler.exists() && !LockFileHandler.isStale();
     }
 
     private void readLockfile() throws IOException {
@@ -230,6 +236,7 @@ public class RiotLocalApiClient {
                 if (attempt % 5 == 0)
                     logger.debug("Local API not reachable yet: {}", e.getMessage());
                 try {
+                    LockFileHandler.deleteStale();
                     if (LockFileHandler.exists())
                         readLockfile();
                 } catch (IOException ignored) {
@@ -264,6 +271,7 @@ public class RiotLocalApiClient {
                 // Expected connection errors during startup; refresh the lockfile in case it
                 // rotated.
                 try {
+                    LockFileHandler.deleteStale();
                     if (LockFileHandler.exists())
                         readLockfile();
                 } catch (IOException ignored) {

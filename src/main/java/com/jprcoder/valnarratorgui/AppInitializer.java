@@ -30,6 +30,9 @@ class AppInitializer {
     // Give the Riot client a short grace period after connecting so startup settles before the
     // exit watcher begins polling; this avoids racing the launch handoff.
     private static final long POST_START_WATCH_DELAY_MS = 5_000;
+    // Grace period after Valorant's process is confirmed gone before patching its config - lets any
+    // trailing write-on-exit from the game's own cleanup finish first (see onValorantClosed).
+    private static final long POST_VALORANT_EXIT_WRITE_DELAY_MS = 2_000;
     // Exclusive-fullscreen -> Borderless handling: prompt once per app session, apply on
     // the next Valorant close.
     private static final AtomicBoolean fullscreenPrompted = new AtomicBoolean(false);
@@ -241,8 +244,19 @@ class AppInitializer {
             // Valorant is closed now so the write sticks. Run off the FX thread - it walks the
             // Valorant config tree and writes files, which must not block/freeze the UI. Ask
             // about exiting only after the write finishes so System.exit cannot kill it early.
-            CompletableFuture.supplyAsync(() ->
-                            RiotUtilityHandler.setBorderlessMode(localApi.getSelfPuuid(), localApi.getSubjectDeployment()))
+            // A short grace delay first: the game process disappearing from tasklist doesn't
+            // guarantee its own final GameUserSettings.ini write has landed yet (cleanup/telemetry
+            // subprocesses can hold the file a moment longer) - patching too early risks the fix
+            // being silently overwritten by that trailing write. patchBorderless() also retries on
+            // a transient lock, but this avoids racing a write that hasn't happened yet at all.
+            CompletableFuture.supplyAsync(() -> {
+                        try {
+                            Thread.sleep(POST_VALORANT_EXIT_WRITE_DELAY_MS);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        return RiotUtilityHandler.setBorderlessMode(localApi.getSelfPuuid(), localApi.getSubjectDeployment());
+                    })
                     .whenComplete((n, error) -> Platform.runLater(() -> {
                         if (error != null) {
                             logger.warn("Failed to apply borderless on close", error);

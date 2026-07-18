@@ -101,7 +101,15 @@ public class VoiceGenerator {
         ProcessUtil.runDetached(soundVolumeView, "/SetPlaybackThroughDevice", "CABLE Output",
                 "Default Playback Device");
         ProcessUtil.runDetached(soundVolumeView, "/SetListenToThisDevice", "CABLE Output", "1");
-        ProcessUtil.runDetached(soundVolumeView, "/unmute", "CABLE Output");
+        // Force both CABLE endpoints unmuted at full volume every startup. Windows persists
+        // per-device mute/volume state across sessions, so a previously (manually or accidentally)
+        // muted/lowered CABLE Input or Output silently breaks narration routing into Valorant's
+        // voice capture with no error anywhere in this pipeline - nothing here fails, the audio is
+        // just inaudible on the other end.
+        ProcessUtil.runDetached(soundVolumeView, "/Unmute", "CABLE Input");
+        ProcessUtil.runDetached(soundVolumeView, "/SetVolume", "CABLE Input", "100");
+        ProcessUtil.runDetached(soundVolumeView, "/Unmute", "CABLE Output");
+        ProcessUtil.runDetached(soundVolumeView, "/SetVolume", "CABLE Output", "100");
         logger.debug("Configured VB-Audio CABLE routing.");
 
         LockFileHandler lockFileHandler = new LockFileHandler();

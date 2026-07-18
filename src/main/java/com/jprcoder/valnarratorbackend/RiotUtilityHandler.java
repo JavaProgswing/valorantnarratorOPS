@@ -79,31 +79,73 @@ public class RiotUtilityHandler {
      * The Riot Client path is resolved from {@code RiotClientInstalls.json}, falling
      * back to the default install location.
      */
+    /**
+     * Resolves the RiotClientServices.exe path: {@code RiotClientInstalls.json}'s {@code rc_default}
+     * is authoritative, but that file is maintained by Riot's own launcher and has been observed
+     * transiently zero-filled (caught mid-write) - one retry after a short delay clears that race.
+     * If the json is still unusable, falls back to probing common install locations across drive
+     * letters (many users install off the {@code C:} default) before giving up.
+     */
+    private static String resolveRiotClientPath() {
+        File installsJson = new File(System.getenv("ProgramData") + "\\Riot Games\\RiotClientInstalls.json");
+        String fromJson = readRcDefault(installsJson);
+        if (fromJson == null) {
+            // Zero-byte/mid-write races self-heal within milliseconds - one short retry is enough.
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            fromJson = readRcDefault(installsJson);
+        }
+        if (fromJson != null && new File(fromJson).isFile()) {
+            return fromJson;
+        }
+        if (fromJson != null) {
+            logger.warn("rc_default path '{}' from RiotClientInstalls.json does not exist; probing common locations.", fromJson);
+        }
+
+        for (String drive : new String[]{"C:", "D:", "E:", "F:"}) {
+            String candidate = drive + "\\Riot Games\\Riot Client\\RiotClientServices.exe";
+            if (new File(candidate).isFile()) return candidate;
+        }
+        for (String envVar : new String[]{"ProgramFiles", "ProgramFiles(x86)"}) {
+            String base = System.getenv(envVar);
+            if (base == null) continue;
+            String candidate = base + "\\Riot Games\\Riot Client\\RiotClientServices.exe";
+            if (new File(candidate).isFile()) return candidate;
+        }
+        return fromJson != null ? fromJson : (System.getenv("SystemDrive") + "\\Riot Games\\Riot Client\\RiotClientServices.exe");
+    }
+
+    /**
+     * Best-effort read of {@code rc_default} from RiotClientInstalls.json. Returns null on any
+     * failure (missing file, corrupt/partial content, missing key) rather than throwing, so the
+     * caller can retry or fall back to path probing.
+     */
+    private static String readRcDefault(File installsJson) {
+        if (!installsJson.exists()) return null;
+        try {
+            String content = Files.readString(installsJson.toPath());
+            JsonObject json = JsonParser.parseString(content).getAsJsonObject();
+            return json.has("rc_default") ? json.get("rc_default").getAsString() : null;
+        } catch (Exception e) {
+            logger.debug("Could not read RiotClientInstalls.json: {}", e.getMessage());
+            return null;
+        }
+    }
+
     public static void launchValorant() {
         if (isValorantRunning()) {
             logger.info("Valorant is already running; skipping launch.");
             return;
         }
 
-        String riotClientPath = System.getenv("SystemDrive") + "\\Riot Games\\Riot Client\\RiotClientServices.exe";
-        File installsJson = new File(System.getenv("ProgramData") + "\\Riot Games\\RiotClientInstalls.json");
-        try {
-            if (installsJson.exists()) {
-                String content = Files.readString(installsJson.toPath());
-                JsonObject json = JsonParser.parseString(content).getAsJsonObject();
-                if (json.has("rc_default")) {
-                    riotClientPath = json.get("rc_default").getAsString();
-                }
-            } else {
-                logger.warn("{} not found; using default Riot Client path.", installsJson);
-            }
-        } catch (Exception e) {
-            logger.warn("Could not read RiotClientInstalls.json, using default path", e);
-        }
-
-        if (!new File(riotClientPath).isFile()) {
-            logger.error("RiotClientServices.exe not found at '{}' - cannot auto-launch Valorant. "
-                    + "Launch Valorant manually; the app will connect once it is running.", riotClientPath);
+        String riotClientPath = resolveRiotClientPath();
+        if (riotClientPath == null || !new File(riotClientPath).isFile()) {
+            logger.error("RiotClientServices.exe not found (tried '{}' and common install locations) - cannot "
+                    + "auto-launch Valorant. Launch Valorant manually; the app will connect once it is running.",
+                    riotClientPath);
             return;
         }
 
@@ -192,21 +234,40 @@ public class RiotUtilityHandler {
         return patched;
     }
 
+    // Retries for the read-modify-write below: the ini can be transiently locked right after
+    // Valorant exits (its own cleanup/telemetry subprocess, or an AV scan on the just-closed file),
+    // which otherwise makes the borderless fix silently no-op for that session.
+    private static final int PATCH_RETRIES = 4;
+    private static final long PATCH_RETRY_DELAY_MS = 750;
+
     /**
      * Reads one ini, applies the borderless transform, and writes it back only if it changed.
+     * Retries on IOException (transient file lock) before giving up.
      */
     private static boolean patchBorderless(Path ini) {
-        try {
-            String content = Files.readString(ini);
-            String patched = applyBorderless(content);
-            if (patched.equals(content)) return false;
-            Files.writeString(ini, patched);
-            logger.debug("Patched Valorant config to borderless: {}", ini);
-            return true;
-        } catch (IOException e) {
-            logger.warn("Could not patch '{}'", ini, e);
-            return false;
+        IOException last = null;
+        for (int attempt = 1; attempt <= PATCH_RETRIES; attempt++) {
+            try {
+                String content = Files.readString(ini);
+                String patched = applyBorderless(content);
+                if (patched.equals(content)) return false;
+                Files.writeString(ini, patched);
+                logger.debug("Patched Valorant config to borderless: {}", ini);
+                return true;
+            } catch (IOException e) {
+                last = e;
+                if (attempt < PATCH_RETRIES) {
+                    try {
+                        Thread.sleep(PATCH_RETRY_DELAY_MS);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
         }
+        logger.warn("Could not patch '{}' after {} attempt(s)", ini, PATCH_RETRIES, last);
+        return false;
     }
 
     /**
