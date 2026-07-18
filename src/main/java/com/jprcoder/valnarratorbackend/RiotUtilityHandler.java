@@ -102,8 +102,14 @@ public class RiotUtilityHandler {
             return fromJson;
         }
         if (fromJson != null) {
-            logger.warn("rc_default path '{}' from RiotClientInstalls.json does not exist; probing common locations.", fromJson);
+            logger.warn("rc_default path '{}' from RiotClientInstalls.json does not exist; trying other sources.", fromJson);
         }
+
+        // The Start Menu shortcut Riot's installer creates points at the exe wherever it actually
+        // was installed - including non-default locations like "D:\Games\Riot Games\..." that a
+        // drive-root guess below would never find. Far more reliable than guessing, so try it first.
+        String fromShortcut = resolveViaStartMenuShortcut();
+        if (fromShortcut != null) return fromShortcut;
 
         for (String drive : new String[]{"C:", "D:", "E:", "F:"}) {
             String candidate = drive + "\\Riot Games\\Riot Client\\RiotClientServices.exe";
@@ -116,6 +122,54 @@ public class RiotUtilityHandler {
             if (new File(candidate).isFile()) return candidate;
         }
         return fromJson != null ? fromJson : (System.getenv("SystemDrive") + "\\Riot Games\\Riot Client\\RiotClientServices.exe");
+    }
+
+    /**
+     * Resolves RiotClientServices.exe by reading the target of the .lnk shortcut Riot's installer
+     * places under the "Riot Games" Start Menu folder (checks both the all-users and current-user
+     * Start Menu, since the installer can target either depending on install mode). Handles any
+     * custom install path with no guessing involved.
+     */
+    private static String resolveViaStartMenuShortcut() {
+        for (String rootEnv : new String[]{"ProgramData", "AppData"}) {
+            String root = System.getenv(rootEnv);
+            if (root == null) continue;
+            File riotGamesFolder = new File(root, "Microsoft\\Windows\\Start Menu\\Programs\\Riot Games");
+            File[] shortcuts = riotGamesFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".lnk"));
+            if (shortcuts == null) continue;
+
+            for (File shortcut : shortcuts) {
+                String target = resolveShortcutTarget(shortcut);
+                if (target != null && target.toLowerCase().endsWith("riotclientservices.exe") && new File(target).isFile()) {
+                    return target;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Resolves a Windows .lnk shortcut's target path via WScript.Shell (no Java library parses the
+     * binary shortcut format, and shelling out to the same COM object Explorer itself uses is the
+     * standard, robust approach). Returns null on any failure - a resolution attempt, not a
+     * requirement.
+     */
+    private static String resolveShortcutTarget(File shortcut) {
+        try {
+            String escapedPath = shortcut.getAbsolutePath().replace("'", "''");
+            Process p = new ProcessBuilder("powershell", "-NoProfile", "-NonInteractive", "-Command",
+                    "(New-Object -ComObject WScript.Shell).CreateShortcut('" + escapedPath + "').TargetPath")
+                    .redirectErrorStream(true).start();
+            String target;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+                target = reader.readLine();
+            }
+            p.waitFor();
+            return (target == null || target.isBlank()) ? null : target.trim();
+        } catch (Exception e) {
+            logger.debug("Could not resolve shortcut target for {}: {}", shortcut, e.getMessage());
+            return null;
+        }
     }
 
     /**
